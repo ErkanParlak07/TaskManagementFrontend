@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Görev Yönetim Sistemi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Görev Yönetim Paneli</h1>
+
+        <section class="form-section">
+            <h2>Yeni Görev Ekle</h2>
+            <form id="task-form">
+                <input type="text" id="task-title" placeholder="Görev başlığını yazın..." required>
+                <textarea id="task-desc" placeholder="Görev detaylarını yazın (İsteğe bağlı)..." rows="3"></textarea>
+                
+                <div class="form-row">
+                    <select id="task-priority">
+                        <option value="0">Düşük Öncelik</option>
+                        <option value="1" selected>Orta Öncelik</option>
+                        <option value="2">Yüksek Öncelik</option>
+                    </select>
+                    <button type="submit" id="submit-btn">Görevi Ekle</button>
+                </div>
+            </form>
+        </section>
+
+        <hr>
+
+        <section class="list-section">
+            <h2>Mevcut Görevler</h2>
+            <div id="task-list" class="task-list">
+                <p class="loading-text">Görevler yükleniyor...</p>
+            </div>
+        </section>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
