@@ -9,6 +9,20 @@
 <body>
     <div class="container">
         <h1>Görev Yönetim Paneli</h1>
+        <section class="dashboard-section">
+            <div class="stat-card">
+                <h3>Toplam Görev</h3>
+                <p id="stat-total">0</p>
+            </div>
+            <div class="stat-card stat-success">
+                <h3>Tamamlanan</h3>
+                <p id="stat-completed">0</p>
+            </div>
+            <div class="stat-card stat-pending">
+                <h3>Kalan İşler</h3>
+                <p id="stat-pending">0</p>
+            </div>
+        </section>
 
         <section class="form-section">
             <h2>Yeni Görev Ekle</h2>
@@ -30,6 +44,15 @@
         <hr>
 
         <section class="list-section">
+            <section class="filter-section">
+            <input type="text" id="search-input" placeholder="Görevlerde ara...">
+            <select id="status-filter">
+                <option value="all">Tüm Görevler</option>
+                <option value="0">Yapılacaklar</option>
+                <option value="1">Devam Edenler</option>
+                <option value="2">Tamamlananlar</option>
+            </select>
+        </section>
             <h2>Mevcut Görevler</h2>
             <div id="task-list" class="task-list">
                 <p class="loading-text">Görevler yükleniyor...</p>

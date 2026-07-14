@@ -6,30 +6,88 @@ const taskPriorityInput = document.getElementById('task-priority');
 const taskListContainer = document.getElementById('task-list');
 const submitBtn = document.getElementById('submit-btn');
 
+// İstatistik Panosu (Dashboard) Elemanları
+const statTotal = document.getElementById('stat-total');
+const statCompleted = document.getElementById('stat-completed');
+const statPending = document.getElementById('stat-pending');
+
+// Arama ve Filtreleme Elemanları
+const searchInput = document.getElementById('search-input');
+const statusFilter = document.getElementById('status-filter');
+
 let isEditing = false;
 let currentEditId = null;
 let currentEditStatus = 0;
 
-// --- 2. Sayfa Yüklendiğinde Görevleri Çek (GET) ---
-document.addEventListener('DOMContentLoaded', loadTasks);
+// YENİ: API'den gelen orijinal veriyi hafızada tutacağımız dizi
+let allTasks = []; 
 
+// --- 2. Sayfa Yüklendiğinde Başlat ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadTasks();
+    
+    // Klavyeden her harf girildiğinde (input) veya menü değiştiğinde (change) filtreyi çalıştır
+    searchInput.addEventListener('input', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+});
+
+// Veriyi Çek (Sadece veritabanından veri almak için)
 async function loadTasks() {
     taskListContainer.innerHTML = '<p class="loading-text">Görevler yükleniyor...</p>';
-    const tasks = await getTasksFromAPI();
+    
+    // API'den veriyi alıp global dizimize kopyalıyoruz
+    allTasks = await getTasksFromAPI();
+    
+    // Dashboard'u tüm görevlere göre güncelle
+    updateDashboard(allTasks);
 
-    if (tasks.length === 0) {
-        taskListContainer.innerHTML = '<p class="loading-text">Henüz hiç görev yok. Yeni bir tane ekleyin!</p>';
+    // Ekrana doğrudan çizmek yerine, filtreleme fonksiyonuna paslıyoruz
+    applyFilters(); 
+}
+
+// YENİ: Filtreleme Mantığı
+function applyFilters() {
+    // Kullanıcının aradığı metni küçük harfe çevir
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    // Kullanıcının seçtiği durumu al (all, 0, 1, 2)
+    const filterValue = statusFilter.value;
+
+    // JavaScript 'filter' fonksiyonu ile diziyi süzüyoruz
+    const filteredTasks = allTasks.filter(task => {
+        const taskTitle = (task.title ?? task.Title ?? "").toLowerCase();
+        const taskStatus = normalizeStatus(task.status ?? task.Status);
+        
+        // 1. Şart: Arama kutusundaki metin başlıkta geçiyor mu?
+        const matchesSearch = taskTitle.includes(searchTerm);
+        
+        // 2. Şart: Dropdown menüden seçilen duruma uyuyor mu?
+        let matchesStatus = true;
+        if (filterValue !== "all") {
+            // Dropdown'dan gelen değer String olduğu için sayıya çevirip (parseInt) kıyaslıyoruz
+            matchesStatus = taskStatus === parseInt(filterValue); 
+        }
+
+        return matchesSearch && matchesStatus;
+    });
+
+    // Süzülmüş olan yeni diziyi ekrana çizmesi için gönderiyoruz
+    renderTasks(filteredTasks);
+}
+
+// YENİ: Ekrana Çizme Mantığı (Eski loadTasks'ın HTML kısmı buraya taşındı)
+function renderTasks(tasksToRender) {
+    if (tasksToRender.length === 0) {
+        taskListContainer.innerHTML = '<p class="loading-text">Bu kritere uygun görev bulunamadı.</p>';
         return;
     }
 
     taskListContainer.innerHTML = ''; 
 
-    tasks.forEach(task => {
+    tasksToRender.forEach(task => {
         const taskId = parseInt(task.id ?? task.Id);
         const taskTitle = task.title ?? task.Title ?? "Başlıksız";
         const taskDesc = task.description ?? task.Description ?? "";
         
-        // Yeni kurşungeçirmez fonksiyonlarımızı çağırıyoruz
         const taskStatus = normalizeStatus(task.status ?? task.Status);
         const taskPriority = normalizePriority(task.priority ?? task.Priority);
 
@@ -66,14 +124,13 @@ async function loadTasks() {
     });
 }
 
-// --- 3. Form Gönderimi (Ekleme ve Düzenleme Ortak Yeri) ---
+// --- 3. Form Gönderimi (Ekleme ve Düzenleme) ---
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault(); 
     submitBtn.disabled = true;
 
     if (isEditing) {
         submitBtn.innerText = "Güncelleniyor...";
-        
         const updateData = {
             id: currentEditId, 
             title: taskTitleInput.value,
@@ -91,7 +148,6 @@ taskForm.addEventListener('submit', async (e) => {
         }
     } else {
         submitBtn.innerText = "Ekleniyor...";
-        
         const createData = {
             title: taskTitleInput.value,
             description: taskDescInput.value,
@@ -99,7 +155,6 @@ taskForm.addEventListener('submit', async (e) => {
         };
 
         const createdTask = await addTaskToAPI(createData);
-        
         if (createdTask) {
             resetForm(); 
             await loadTasks(); 
@@ -111,16 +166,13 @@ taskForm.addEventListener('submit', async (e) => {
     submitBtn.disabled = false;
 });
 
-// --- 4. Görev Düzenleme Modunu Başlatma ---
 function editTask(id, title, description, priority, status) {
     taskTitleInput.value = title;
     taskDescInput.value = description;
     taskPriorityInput.value = priority;
-
     isEditing = true;
     currentEditId = id;
     currentEditStatus = status;
-
     submitBtn.innerText = "Görevi Güncelle";
     submitBtn.style.backgroundColor = "var(--success)"; 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -136,20 +188,14 @@ function resetForm() {
     submitBtn.style.backgroundColor = "var(--primary)"; 
 }
 
-// --- 5. Görev Tamamlama (PUT) ---
 async function completeTask(id, title, description, priority) {
     const updateData = { 
-        id: id, 
-        title: title, 
-        description: description, 
-        status: 2, 
-        priority: priority 
+        id: id, title: title, description: description, status: 2, priority: priority 
     };
     const success = await updateTaskInAPI(id, updateData);
     if (success) await loadTasks();
 }
 
-// --- 6. Görev Silme (DELETE) ---
 async function removeTask(id) {
     if (confirm("Bu görevi kalıcı olarak silmek istediğinize emin misiniz?")) {
         const success = await deleteTaskFromAPI(id);
@@ -157,28 +203,32 @@ async function removeTask(id) {
     }
 }
 
-// --- Yardımcı Araçlar: GELİŞMİŞ VERİ TEMİZLEME ---
+// --- İstatistik Panosu (Dashboard) ---
+function updateDashboard(tasksArray) {
+    const total = tasksArray.length;
+    const completed = tasksArray.filter(task => {
+        return normalizeStatus(task.status ?? task.Status) === 2;
+    }).length;
+    
+    statTotal.innerText = total;
+    statCompleted.innerText = completed;
+    statPending.innerText = total - completed;
+}
+
+// --- Yardımcı Araçlar: Veri Temizleme ---
 function normalizeStatus(val) {
     if (val === null || val === undefined) return 0;
-    
-    // C#'tan gelen değeri kesin olarak metne çevirip tüm harflerini küçültüyoruz
     const s = String(val).toLowerCase().trim();
-    
-    // C# 'Completed' veya 'Done' gönderebilir, hepsini yakalıyoruz
     if (s === '2' || s === 'done' || s === 'completed' || s === 'tamamlandı') return 2;
     if (s === '1' || s === 'inprogress' || s === 'in progress' || s === 'devam ediyor') return 1;
-    
     return 0; 
 }
 
 function normalizePriority(val) {
     if (val === null || val === undefined) return 1;
-    
     const s = String(val).toLowerCase().trim();
-    
     if (s === '2' || s === 'high' || s === 'yüksek') return 2;
     if (s === '0' || s === 'low' || s === 'düşük') return 0;
-    
     return 1; 
 }
 
