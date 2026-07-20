@@ -8,7 +8,7 @@ Uygulama, arka planda çalışan C# .NET API'si ile Fetch API üzerinden haberle
 
 * **Kapsamlı CRUD İşlemleri:** Görev ekleme, listeleme, güncelleme ve kalıcı olarak silme.
 * **Dinamik Durum Yönetimi:** Görevleri tek tıkla "Tamamlandı" olarak işaretleyebilme.
-* **Akıllı Form:** Aynı form üzerinden hem yeni görev ekleme hem de mevcut görevi düzenleme (Mod değişimi).
+* **Akıllı Form:** Aynı form üzerinden yeni görev ekleme, mevcut görevi düzenleme,dinamik arama/filtreleme yapılabilir ve Dashboard (İstatistik Panosu) bakılabilir.
 * **Veri Güvenliği:** Backend'den (C#) gelen veri uyuşmazlıklarına karşı (String/Int/Null) tam korumalı veri temizleme mekanizmaları.
 * **Modern Arayüz:** Kullanıcı dostu, yumuşak geçişli ve CSS değişkenleriyle tasarlanmış modern UI.
 
@@ -19,6 +19,9 @@ Uygulama, arka planda çalışan C# .NET API'si ile Fetch API üzerinden haberle
 ![Ana Sayfa ve Görev Listesi](images/home.png)
 <br>
 ![Görev Düzenleme Modu](images/edit.png)
+<br>
+<img width="518" height="868" alt="Ekran Görüntüsü (2447)" src="https://github.com/user-attachments/assets/82bf0f19-3049-4699-ae66-e1899b85a347" />
+
 
 ## 🛠️ Kullanılan Teknolojiler
 
