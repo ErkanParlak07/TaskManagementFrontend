@@ -8,7 +8,14 @@
 </head>
 <body>
     <div class="container">
-        <h1>Görev Yönetim Paneli</h1>
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h1 style="margin: 0;">Görev Yönetim Paneli</h1>
+            
+            <div class="header-actions" style="display: flex; gap: 10px;">
+                <a href="admin.html" id="admin-btn" class="btn-action" style="background-color: #ff9800; text-decoration: none; display: flex; align-items: center;">Yönetici Paneli</a>
+                <button id="logout-btn" class="btn-action">Çıkış Yap</button>
+            </div>
+        </header>
         <section class="dashboard-section">
             <div class="stat-card">
                 <h3>Toplam Görev</h3>

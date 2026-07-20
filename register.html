@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayıt Ol - Görev Yönetimi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <h2>Yeni Hesap Oluştur</h2>
+        <p>Sisteme katılmak için bilgilerinizi girin.</p>
+        
+        <form id="register-form">
+            <div class="form-group">
+                <label for="reg-username">Kullanıcı Adı</label>
+                <input type="text" id="reg-username" placeholder="Örn: erkanparlak" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-email">E-posta Adresi</label>
+                <input type="email" id="reg-email" placeholder="Örn: mail@proje.com" required>
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Şifre</label>
+                <input type="password" id="reg-password" placeholder="Şifrenizi belirleyin" required>
+            </div>
+            <button type="submit" id="reg-submit-btn" class="btn-submit">Kayıt Ol</button>
+        </form>
+        
+        <p class="auth-link">Zaten hesabınız var mı? <a href="login.html">Giriş Yap</a></p>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Yönetici Paneli</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container" style="max-width: 800px;">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+            <h2>Kullanıcı Yönetimi</h2>
+            <a href="index.html" class="btn-action">Görevlere Dön</a>
+        </header>
+<!-- Pasif kullanıcıları gösterme butonu -->
+        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="show-passive-chk" style="width: 16px; height: 16px; cursor: pointer;">
+            <label for="show-passive-chk" style="cursor: pointer; font-weight: bold;">Pasif Edilen Kullanıcıları Göster</label>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="border-bottom: 2px solid #ddd;">
+                    <th style="padding: 10px;">ID</th>
+                    <th style="padding: 10px;">Kullanıcı Adı</th>
+                    <th style="padding: 10px;">Rol</th>
+                    <th style="padding: 10px;">İşlemler</th>
+                </tr>
+            </thead>
+            <tbody id="user-list">
+                </tbody>
+        </table>
+    </div>
+
+    
+    <!-- DÜZENLEME MODALI (Başlangıçta Gizli) -->
+    <div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div style="background: white; padding: 25px; border-radius: 8px; width: 350px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Kullanıcı Düzenle</h3>
+            
+            <form id="edit-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+                <input type="hidden" id="edit-id"> <!-- ID'yi arka planda tutacağız -->
+                
+                <div>
+                    <label style="font-size: 14px; font-weight: bold;">Kullanıcı Adı:</label>
+                    <input type="text" id="edit-username" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                
+                <div>
+                    <label style="font-size: 14px; font-weight: bold;">E-posta:</label>
+                    <input type="email" id="edit-email" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                
+                <div>
+                    <label style="font-size: 14px; font-weight: bold;">Rol:</label>
+                    <select id="edit-role" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                        <option value="User">User</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <!--  ŞİFRE ALANI -->
+                <div>
+                    <label style="font-size: 14px; font-weight: bold;">Yeni Şifre (Değiştirmeyecekseniz boş bırakın):</label>
+                    <input type="password" id="edit-password" placeholder="Yeni şifre belirle..." style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+                
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="submit" class="btn-action" style="flex: 1; background-color: #007bff;">Kaydet</button>
+                    <button type="button" onclick="closeModal()" class="btn-action" style="flex: 1; background-color: #6c757d;">İptal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- KULLANICI GÖREVLERİ MODALI (Başlangıçta Gizli) -->
+    <div id="tasks-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
+        <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            
+            <h3 id="tasks-modal-title" style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; color: #003d82;">
+                Kullanıcı Görevleri
+            </h3>
+            
+            <!-- Görevlerin listeleneceği alan -->
+            <ul id="user-tasks-list" style="list-style-type: none; padding: 0; margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                <!-- JS ile görevler buraya eklenecek -->
+            </ul>
+            
+            <div style="margin-top: 20px; text-align: right;">
+                <button type="button" onclick="closeTasksModal()" class="btn-action" style="background-color: #6c757d; padding: 8px 16px;">Kapat</button>
+            </div>
+            
+        </div>
+    </div>
+    <script src="admin.js"></script>
+</body>
+</html>

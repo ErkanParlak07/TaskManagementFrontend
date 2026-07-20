@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giriş Yap - Görev Yönetimi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <h2>Hoş Geldiniz</h2>
+        <p>Görevlerinize ulaşmak için giriş yapın.</p>
+        
+        <form id="login-form">
+            <div class="form-group">
+                <label for="log-username">Kullanıcı Adı</label>
+                <input type="text" id="log-username" placeholder="Kullanıcı adınızı girin" required>
+            </div>
+            <div class="form-group">
+                <label for="log-password">Şifre</label>
+                <input type="password" id="log-password" placeholder="Şifrenizi girin" required>
+            </div>
+            <button type="submit" id="log-submit-btn" class="btn-submit">Giriş Yap</button>
+        </form>
+        
+        <p class="auth-link">Henüz hesabınız yok mu? <a href="register.html">Kayıt Ol</a></p>
+    </div>
+
+    <script src="auth.js"></script>
+</body>
+</html>

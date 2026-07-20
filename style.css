@@ -308,3 +308,96 @@ hr {
         flex-direction: column;
     }
 }
+/* --- 8. Kimlik Doğrulama (Login / Register) Ekranları --- */
+.auth-body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+    margin: 0;
+}
+
+.auth-container {
+    background-color: var(--card-bg);
+    padding: 2.5rem;
+    border-radius: var(--radius);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.auth-container h2 {
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.auth-container p {
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+    font-size: 0.95rem;
+}
+
+.auth-link {
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.auth-link a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.auth-link a:hover {
+    color: var(--secondary);
+    text-decoration: underline;
+}
+/* --- 9. Form Doğrulama (Validation) Stilleri --- */
+.is-invalid {
+    border-color: #dc3545 !important;
+    background-color: #fff8f8;
+}
+
+.invalid-feedback {
+    display: block;
+    color: #dc3545;
+    font-size: 0.8rem;
+    text-align: left;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+/* --- MODERN BİLDİRİM (TOAST) TASARIMI --- */
+.modern-toast {
+    visibility: hidden;
+    min-width: 250px;
+    color: #fff;
+    text-align: center;
+    border-radius: 8px;
+    padding: 16px;
+    position: fixed;
+    z-index: 9999;
+    right: 20px;
+    bottom: 20px; /* Sağ alt köşede çıkar */
+    font-size: 15px;
+    font-weight: 500;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    opacity: 0;
+    transform: translateY(30px); /* Aşağıdan yukarı kayma efekti için */
+    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
+}
+
+/* Animasyonu tetikleyen sınıf */
+.modern-toast.show {
+    visibility: visible;
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Duruma göre renkler */
+.toast-error { background-color: #dc3545; } /* Kırmızı (Hata) */
+.toast-success { background-color: #28a745; } /* Yeşil (Başarılı) */
+.toast-info { background-color: #17a2b8; } /* Mavi (Bilgi) */

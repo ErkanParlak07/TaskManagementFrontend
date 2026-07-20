@@ -1,0 +1,226 @@
+const API_ADMIN_URL = 'http://localhost:5072/api/admin';
+let usersData = []; // Veritabanından gelen tüm listeyi burada tutacağız
+// MODERN BİLDİRİM GÖSTERİCİ FONKSİYON
+function showToast(message, type = 'error') {
+    // 1. Bildirim kutusunu yarat
+    const toast = document.createElement('div');
+    toast.className = `modern-toast toast-${type}`;
+    toast.innerText = message;
+    
+    // 2. Sayfaya ekle
+    document.body.appendChild(toast);
+
+    // 3. Görünür yap (Animasyonu başlat)
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // 4. 3 saniye sonra ekrandan sil
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300); // Animasyon bitince HTML'den de temizle
+    }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    // Checkbox'a tıklanınca tabloyu yeniden çizecek olay dinleyicisi
+    document.getElementById('show-passive-chk').addEventListener('change', renderTable);
+    
+    // Sayfa açıldığında verileri yükle
+    await loadUsers();
+});
+
+// API'den kullanıcıları çeken fonksiyon
+async function loadUsers() {
+    const token = localStorage.getItem('jwtToken');
+    try {
+        const response = await fetch(`${API_ADMIN_URL}/users`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            usersData = await response.json();
+            renderTable(); // Veri gelince tabloyu çiz
+        } else {
+            showToast("Erişim yetkiniz yok!", "error");
+            window.location.href = 'index.html';
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+    }
+}
+
+// Tabloyu ekrana basan fonksiyon
+function renderTable() {
+    const tbody = document.getElementById('user-list');
+    tbody.innerHTML = '';
+    
+    // Checkbox işaretli mi? (true/false)
+    const showPassive = document.getElementById('show-passive-chk').checked;
+
+    // Sadece checkbox'ın durumuna uyanları filtrele
+    const filteredUsers = usersData.filter(u => u.isDeleted === showPassive);
+
+    filteredUsers.forEach(user => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = "1px solid #ddd"; // Satır altı çizgisi
+        
+        let actionButton = '';
+        if (user.isDeleted) {
+            actionButton = `<button onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #28a745;">Aktif Et</button>`;
+        } else {
+            actionButton = `<button onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #d9534f;">Pasif Et</button>`;
+        }
+
+        row.innerHTML = `
+            <td style="padding: 10px;">${user.id}</td>
+            <td style="padding: 10px; font-weight: bold;">${user.username}</td>
+            <td style="padding: 10px;">${user.role}</td>
+            <td style="padding: 10px; display: flex; gap: 8px;">
+                <!-- YENİ: Görevler Butonu -->
+                <button onclick="openTasksModal(${user.id}, '${user.username}')" class="btn-action" style="background-color: #17a2b8;">Görevler</button>
+                
+                <button onclick="openEditModal(${user.id})" class="btn-action" style="background-color: #007bff;">Düzenle</button>
+                ${actionButton}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Butona tıklandığında durumu değiştiren fonksiyon
+async function toggleUser(id) {
+    const token = localStorage.getItem('jwtToken');
+    
+    const response = await fetch(`${API_ADMIN_URL}/toggle-status/${id}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (response.ok) {
+        await loadUsers(); // Başarılıysa tabloyu güncelle
+    } else {
+        showToast("İşlem başarısız oldu.", "error");
+    }
+}
+// MODAL AÇMA İŞLEMİ (Verileri forma doldurur)
+function openEditModal(id) {
+    // Tıklanan kullanıcıyı listemizden bul
+    const user = usersData.find(u => u.id === id);
+    if (!user) return;
+
+    // Formdaki kutucukları kullanıcının mevcut bilgileriyle doldur
+    document.getElementById('edit-id').value = user.id;
+    document.getElementById('edit-username').value = user.username;
+    document.getElementById('edit-email').value = user.email || ''; 
+    document.getElementById('edit-role').value = user.role;
+    document.getElementById('edit-password').value = '';
+
+    // Modalı görünür yap
+    document.getElementById('edit-modal').style.display = 'flex';
+}
+
+// MODAL KAPATMA İŞLEMİ
+function closeModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+}
+
+// FORM GÖNDERME İŞLEMİ (Veritabanına kaydetme)
+document.getElementById('edit-form').addEventListener('submit', async (e) => {
+    e.preventDefault(); // Sayfanın yenilenmesini engelle
+    
+    const id = document.getElementById('edit-id').value;
+    const updatedData = {
+        username: document.getElementById('edit-username').value,
+        email: document.getElementById('edit-email').value,
+        role: document.getElementById('edit-role').value,
+        password: document.getElementById('edit-password').value
+    };
+
+    const token = localStorage.getItem('jwtToken');
+    
+    try {
+        const response = await fetch(`${API_ADMIN_URL}/update-user/${id}`, {
+            method: 'PUT',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' // API'ye JSON gönderdiğimizi söylüyoruz
+            },
+            body: JSON.stringify(updatedData)
+        });
+
+        if (response.ok) {
+            closeModal(); // Modalı kapat
+            await loadUsers(); // Tabloyu yeni verilerle tekrar çiz
+            showToast("Kullanıcı bilgileri başarıyla güncellendi!", "success");
+        } else {
+            showToast("Güncelleme işlemi başarısız oldu.", "error");
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+    }
+});
+// GÖREVLER MODALINI AÇMA VE VERİLERİ ÇEKME
+async function openTasksModal(userId, username) {
+    // 1. Modalı görünür yap ve başlığı ayarla
+    document.getElementById('tasks-modal-title').innerText = `${username} Adlı Kişinin Görevleri`;
+    const tasksList = document.getElementById('user-tasks-list');
+    tasksList.innerHTML = '<li style="text-align: center; color: #888;">Görevler yükleniyor...</li>';
+    document.getElementById('tasks-modal').style.display = 'flex';
+
+    const token = localStorage.getItem('jwtToken');
+
+    try {
+        // 2. API'den o kullanıcının görevlerini çek
+        const response = await fetch(`${API_ADMIN_URL}/user-tasks/${userId}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const tasks = await response.json();
+            tasksList.innerHTML = ''; // Yükleniyor yazısını temizle
+
+            // 3. Görevleri ekrana çiz
+            if (tasks.length === 0) {
+                tasksList.innerHTML = '<li style="text-align: center; color: #888;">Bu kullanıcının henüz bir görevi yok.</li>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                // AKILLI KONTROL: Görev ya isCompleted = true ise, ya da Enum durumu Completed/Done ise tamamlanmış sayılır
+                const isTaskDone = task.isCompleted === true || task.statusName === 'Completed' || task.statusName === 'Done';
+
+                const textDecoration = isTaskDone ? 'line-through' : 'none';
+                const color = isTaskDone ? '#28a745' : '#333';
+                const statusText = isTaskDone ? '(Tamamlandı)' : '(Devam Ediyor)';
+
+                const li = document.createElement('li');
+                li.style.cssText = `padding: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; color: ${color}; text-decoration: ${textDecoration}; display: flex; justify-content: space-between; align-items: center;`;
+                
+                li.innerHTML = `
+                    <span>${task.title || task.name || task.description || 'İsimsiz Görev'}</span> 
+                    <span style="font-size: 12px; font-weight: bold;">${statusText}</span>
+                `;
+                tasksList.appendChild(li);
+            });
+
+        } else {
+            tasksList.innerHTML = '<li style="color: #d9534f;">Görevler alınırken bir hata oluştu.</li>';
+            showToast("Kullanıcının görevleri çekilemedi.", "error");
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+        tasksList.innerHTML = '<li style="color: #d9534f;">Bağlantı hatası oluştu.</li>';
+    }
+}
+
+// GÖREVLER MODALINI KAPATMA
+function closeTasksModal() {
+    document.getElementById('tasks-modal').style.display = 'none';
+}

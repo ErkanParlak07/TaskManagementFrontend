@@ -1,3 +1,40 @@
+
+// MODERN BİLDİRİM GÖSTERİCİ FONKSİYON
+function showToast(message, type = 'error') {
+    // 1. Bildirim kutusunu yarat
+    const toast = document.createElement('div');
+    toast.className = `modern-toast toast-${type}`;
+    toast.innerText = message;
+    
+    // 2. Sayfaya ekle
+    document.body.appendChild(toast);
+
+    // 3. Görünür yap (Animasyonu başlat)
+    setTimeout(() => toast.classList.add('show'), 10);
+
+    // 4. 3 saniye sonra ekrandan sil
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300); // Animasyon bitince HTML'den de temizle
+    }, 3000);
+}
+// --- GÜVENLİK DUVARI (Route Guard) ---
+// Eğer tarayıcı kasasında (localStorage) token yoksa, hiç beklemeden login sayfasına at!
+if (!localStorage.getItem('jwtToken')) {
+    window.location.href = 'login.html';
+}
+
+// Çıkış Yap Butonu İşlemi
+document.addEventListener('DOMContentLoaded', () => {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('jwtToken'); // Kasadaki token'ı sil
+            window.location.href = 'login.html'; // Giriş sayfasına yönlendir
+        });
+    }
+});
+
 // --- 1. DOM (HTML) Elemanlarını Seçme ---
 const taskForm = document.getElementById('task-form');
 const taskTitleInput = document.getElementById('task-title');
@@ -14,6 +51,28 @@ const statPending = document.getElementById('stat-pending');
 // Arama ve Filtreleme Elemanları
 const searchInput = document.getElementById('search-input');
 const statusFilter = document.getElementById('status-filter');
+// --- YARDIMCI DOĞRULAMA (VALIDATION) METOTLARI ---
+function showError(inputElement, message) {
+    clearError(inputElement); 
+    inputElement.classList.add('is-invalid'); 
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'invalid-feedback';
+    errorDiv.innerText = message;
+    
+    // YENİ VE DÜZELTİLMİŞ KISIM: Hatayı en sona değil, tam olarak ilgili kutunun hemen altına ekle!
+    inputElement.insertAdjacentElement('afterend', errorDiv);
+}
+
+function clearError(inputElement) {
+    inputElement.classList.remove('is-invalid'); 
+    
+    // YENİ VE DÜZELTİLMİŞ KISIM: Sadece bu kutunun hemen altındaki elementi kontrol et, hata mesajıysa sil
+    const nextElement = inputElement.nextElementSibling;
+    if (nextElement && nextElement.classList.contains('invalid-feedback')) {
+        nextElement.remove();
+    }
+}
 
 let isEditing = false;
 let currentEditId = null;
@@ -23,12 +82,25 @@ let currentEditStatus = 0;
 let allTasks = []; 
 
 // --- 2. Sayfa Yüklendiğinde Başlat ---
+// --- 2. Sayfa Yüklendiğinde Başlat ---
 document.addEventListener('DOMContentLoaded', () => {
     loadTasks();
     
-    // Klavyeden her harf girildiğinde (input) veya menü değiştiğinde (change) filtreyi çalıştır
     searchInput.addEventListener('input', applyFilters);
     statusFilter.addEventListener('change', applyFilters);
+
+    // Çıkış Yap Butonu Dinleyicisi
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('jwtToken');
+            window.location.href = 'login.html';
+        });
+    }
+
+    // Kullanıcı forma yazı yazarken hataları temizle
+    taskTitleInput.addEventListener('input', () => clearError(taskTitleInput));
+    taskDescInput.addEventListener('input', () => clearError(taskDescInput));
 });
 
 // Veriyi Çek (Sadece veritabanından veri almak için)
@@ -127,6 +199,24 @@ function renderTasks(tasksToRender) {
 // --- 3. Form Gönderimi (Ekleme ve Düzenleme) ---
 taskForm.addEventListener('submit', async (e) => {
     e.preventDefault(); 
+    // --- GÖREV DOĞRULAMA KONTROLLERİ ---
+    let hasError = false;
+
+    // Başlık 3 karakterden kısaysa hata ver
+    if (taskTitleInput.value.trim().length < 3) {
+        showError(taskTitleInput, "Görev başlığı en az 3 karakter olmalıdır.");
+        hasError = true;
+    } 
+
+    // Açıklama 500 karakterden uzunsa hata ver
+    if (taskDescInput.value.trim().length > 500) {
+        showError(taskDescInput, "Açıklama en fazla 500 karakter olabilir.");
+        hasError = true;
+    }
+
+    // Eğer hata varsa alt satırlara geçme ve API'ye istek gönderme!
+    if (hasError) return; 
+    // -----------------------------------
     submitBtn.disabled = true;
 
     if (isEditing) {
@@ -159,7 +249,7 @@ taskForm.addEventListener('submit', async (e) => {
             resetForm(); 
             await loadTasks(); 
         } else {
-            alert("Görev eklenirken bir hata oluştu.");
+            showToast("Görev işlemi sırasında bir hata oluştu.", "error");
         }
     }
 
