@@ -8,66 +8,125 @@
 </head>
 <body>
     <div class="container">
+        
+        <!-- ÜST KISIM (BAŞLIK VE BUTONLAR) -->
         <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
             <h1 style="margin: 0;">Görev Yönetim Paneli</h1>
             
             <div class="header-actions" style="display: flex; gap: 10px;">
-                <a href="admin.html" id="admin-btn" class="btn-action" style="background-color: #ff9800; text-decoration: none; display: flex; align-items: center;">Yönetici Paneli</a>
+                <a href="#" onclick="checkAdminAccess(event)" id="admin-btn" class="btn-action" style="background-color: #ff9800; text-decoration: none; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold;">Yönetici Paneli</a>
                 <button id="logout-btn" class="btn-action">Çıkış Yap</button>
             </div>
         </header>
-        <section class="dashboard-section">
-            <div class="stat-card">
-                <h3>Toplam Görev</h3>
-                <p id="stat-total">0</p>
-            </div>
-            <div class="stat-card stat-success">
-                <h3>Tamamlanan</h3>
-                <p id="stat-completed">0</p>
-            </div>
-            <div class="stat-card stat-pending">
-                <h3>Kalan İşler</h3>
-                <p id="stat-pending">0</p>
-            </div>
-        </section>
 
-        <section class="form-section">
-            <h2>Yeni Görev Ekle</h2>
-            <form id="task-form">
-                <input type="text" id="task-title" placeholder="Görev başlığını yazın..." required>
-                <textarea id="task-desc" placeholder="Görev detaylarını yazın (İsteğe bağlı)..." rows="3"></textarea>
-                
-                <div class="form-row">
-                    <select id="task-priority">
-                        <option value="0">Düşük Öncelik</option>
-                        <option value="1" selected>Orta Öncelik</option>
-                        <option value="2">Yüksek Öncelik</option>
-                    </select>
-                    <button type="submit" id="submit-btn">Görevi Ekle</button>
-                </div>
-            </form>
-        </section>
+        <!-- YATAY DÜZEN KAPSAYICISI -->
+        <div class="dashboard-horizontal">
 
-        <hr>
+            <!-- SOL PANEL (İstatistikler ve Form) -->
+            <div class="left-panel">
+                <section class="dashboard-section">
+                    <div class="stat-card">
+                        <h3>Toplam Görev</h3>
+                        <p id="stat-total">0</p>
+                    </div>
+                    <div class="stat-card stat-success">
+                        <h3>Tamamlanan</h3>
+                        <p id="stat-completed">0</p>
+                    </div>
+                    <div class="stat-card stat-pending">
+                        <h3>Kalan İşler</h3>
+                        <p id="stat-pending">0</p>
+                    </div>
+                </section>
 
-        <section class="list-section">
-            <section class="filter-section">
-            <input type="text" id="search-input" placeholder="Görevlerde ara...">
-            <select id="status-filter">
-                <option value="all">Tüm Görevler</option>
-                <option value="0">Yapılacaklar</option>
-                <option value="1">Devam Edenler</option>
-                <option value="2">Tamamlananlar</option>
-            </select>
-        </section>
-            <h2>Mevcut Görevler</h2>
-            <div id="task-list" class="task-list">
-                <p class="loading-text">Görevler yükleniyor...</p>
+                <section class="form-section">
+                    <h2>Yeni Görev Ekle</h2>
+                    <form id="task-form">
+                        <input type="text" id="task-title" placeholder="Görev başlığını yazın..." required>
+                        <textarea id="task-desc" placeholder="Görev detaylarını yazın (İsteğe bağlı)..." rows="3"></textarea>
+                        
+                        <div class="form-row">
+                            <select id="task-priority">
+                                <option value="0">Düşük Öncelik</option>
+                                <option value="1" selected>Orta Öncelik</option>
+                                <option value="2">Yüksek Öncelik</option>
+                            </select>
+                            <button type="submit" id="submit-btn">Görevi Ekle</button>
+                        </div>
+                    </form>
+                </section>
             </div>
-        </section>
+
+            <!-- SAĞ PANEL (Filtreleme ve Görev Listesi) -->
+            <div class="right-panel">
+                <section class="list-section">
+                    <section class="filter-section">
+                        <input type="text" id="search-input" placeholder="Görevlerde ara...">
+                        <select id="status-filter">
+                            <option value="all">Tüm Görevler</option>
+                            <option value="0">Yapılacaklar</option>
+                            <option value="1">Devam Edenler</option>
+                            <option value="2">Tamamlananlar</option>
+                        </select>
+                    </section>
+                    
+                    <h2>Mevcut Görevler</h2>
+                    <div id="task-list" class="task-list">
+                        <p class="loading-text">Görevler yükleniyor...</p>
+                    </div>
+                </section>
+            </div>
+
+        </div> <!-- YATAY DÜZEN BİTİŞİ -->
+
     </div>
 
+    <!-- YÖNETİCİ PANELİ YETKİ KONTROLÜ (JWT DECODE YÖNTEMİ) -->
+    <script>
+        function checkAdminAccess(event) {
+            event.preventDefault(); 
+            
+            const token = localStorage.getItem('jwtToken');
+            let userRole = null;
+
+            if (token) {
+                try {
+                    // Token'ın orta kısmını (Payload) şifreden çözüyoruz
+                    const base64Url = token.split('.')[1];
+                    const base64 = base64Url.replace(/-/g, '+').replace(/_/, '/');
+                    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                    }).join(''));
+
+                    const payload = JSON.parse(jsonPayload);
+                    
+                    // Arka uç mimarisinin Token içine gömdüğü rol anahtarını yakalıyoruz
+                    userRole = payload['role'] || 
+                               payload['Role'] || 
+                               payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+                               
+                } catch (e) {
+                    console.error("Token çözümlenirken hata oluştu:", e);
+                }
+            }
+
+            // Çözümlenen rol admin mi diye kontrol ediyoruz
+            if (userRole && userRole.toLowerCase() === 'admin') {
+                window.location.href = 'admin.html';
+            } else {
+                if (typeof showToast === "function") {
+                    showToast("Bu alana erişim yetkiniz bulunmamaktadır. Sadece yöneticiler giriş yapabilir.", "error");
+                } else {
+                    alert("Bu alana erişim yetkiniz bulunmamaktadır. Sadece yöneticiler giriş yapabilir.");
+                }
+            }
+        }
+    </script>
+
+    <!-- Modern Uyarı Pencereleri için SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="api.js"></script>
     <script src="app.js"></script>
+    
 </body>
 </html>

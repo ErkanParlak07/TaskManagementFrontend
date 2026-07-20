@@ -141,6 +141,7 @@ if (loginForm) {
             if (response.ok) {
                 const data = await response.json();
                 localStorage.setItem('jwtToken', data.token); // Token'ı kasaya koy
+                localStorage.setItem('role', data.role); // API'den gelen rol özelliğinin adı neyse onu yaz (örn: data.role)
                 window.location.href = 'index.html'; // İçeri al
             } else {
                 showToast("Giriş Başarısız!", "error");

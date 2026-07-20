@@ -191,23 +191,68 @@ async function openTasksModal(userId, username) {
                 return;
             }
 
+           // Görevleri listelemek için HTML oluşturma kısmı
+        const tasksListContainer = document.getElementById('user-tasks-list'); // HTML'deki kendi container ID'n neyse onunla eşleştiğinden emin ol (örn: tasksList, user-tasks-list vb.)
+        tasksListContainer.innerHTML = ''; // Önce listeyi temizle
+
+        if (tasks.length === 0) {
+            tasksListContainer.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Bu kullanıcıya ait görev bulunmuyor.</p>';
+        } else {
             tasks.forEach(task => {
-                // AKILLI KONTROL: Görev ya isCompleted = true ise, ya da Enum durumu Completed/Done ise tamamlanmış sayılır
-                const isTaskDone = task.isCompleted === true || task.statusName === 'Completed' || task.statusName === 'Done';
+                // YENİ: C# ve JS büyük/küçük harf uyuşmazlığını çözen garantili okuma yöntemi
+                // Hem mantıksal True hem de yazı olarak gelen "true" ihtimallerini zırhlıyoruz
+                const isDone = task.isCompleted === true || task.IsCompleted === true || task.isCompleted === "true" || task.isCompleted === "True";
+                const prio = task.priority !== undefined ? task.priority : task.Priority;
+                const desc = task.description || task.Description;
+                const title = task.title || task.Title;
 
-                const textDecoration = isTaskDone ? 'line-through' : 'none';
-                const color = isTaskDone ? '#28a745' : '#333';
-                const statusText = isTaskDone ? '(Tamamlandı)' : '(Devam Ediyor)';
-
-                const li = document.createElement('li');
-                li.style.cssText = `padding: 12px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px; color: ${color}; text-decoration: ${textDecoration}; display: flex; justify-content: space-between; align-items: center;`;
+                // 1. Öncelik Değerini Renkli Rozetlere (Badge) Çevirme
+                let priorityText = "Belirsiz";
+                let priorityColor = "#6c757d"; 
                 
-                li.innerHTML = `
-                    <span>${task.title || task.name || task.description || 'İsimsiz Görev'}</span> 
-                    <span style="font-size: 12px; font-weight: bold;">${statusText}</span>
+                if (prio === 2) { priorityText = "Yüksek"; priorityColor = "#dc3545"; } 
+                else if (prio === 1) { priorityText = "Orta"; priorityColor = "#ffc107"; } 
+                else if (prio === 0) { priorityText = "Düşük"; priorityColor = "#28a745"; } 
+
+                // 2. Tamamlanma Durumuna Göre Stil Ayarları (Yeşil Çizgi Eklendi)
+                // text-decoration-color: #28a745 yazının üstünü doğrudan yeşil renkle çizer
+                let titleStyle = isDone 
+                    ? "text-decoration: line-through; text-decoration-color: #28a745; text-decoration-thickness: 2px; color: #999;" 
+                    : "color: #333;";
+                let statusText = isDone ? "(Tamamlandı)" : "(Devam Ediyor)";
+                let statusColor = isDone ? "#28a745" : "#333";
+
+                // 3. Detay (Açıklama) Metni Kontrolü
+                let descriptionHtml = desc 
+                    ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #666; line-height: 1.4;">${desc}</p>` 
+                    : `<p style="margin: 8px 0 0 0; font-size: 13px; color: #aaa; font-style: italic;">Detay eklenmemiş.</p>`;
+
+                // 4. Yeni ve Şık "Görev Kartı" Tasarımı
+                let taskCard = `
+                    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 12px; background-color: #fafafa; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                        
+                        <!-- Üst Kısım: Başlık ve Durum -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
+                            <strong style="${titleStyle} font-size: 16px; flex: 1;">${title}</strong>
+                            <span style="color: ${statusColor}; font-size: 12px; font-weight: bold; margin-left: 10px;">${statusText}</span>
+                        </div>
+                        
+                        <!-- Alt Kısım: Açıklama ve Öncelik Rozeti -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
+                            <div style="flex: 1; padding-right: 15px;">
+                                ${descriptionHtml}
+                            </div>
+                            <div style="background-color: ${priorityColor}; color: ${prio === 1 ? 'black' : 'white'}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap;">
+                                ${priorityText} Öncelik
+                            </div>
+                        </div>
+
+                    </div>
                 `;
-                tasksList.appendChild(li);
+                
+                tasksListContainer.innerHTML += taskCard;
             });
+        }
 
         } else {
             tasksList.innerHTML = '<li style="color: #d9534f;">Görevler alınırken bir hata oluştu.</li>';

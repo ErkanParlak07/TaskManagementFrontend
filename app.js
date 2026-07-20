@@ -148,6 +148,7 @@ function applyFilters() {
 
 // YENİ: Ekrana Çizme Mantığı (Eski loadTasks'ın HTML kısmı buraya taşındı)
 function renderTasks(tasksToRender) {
+    window.currentTasks = tasksToRender;
     if (tasksToRender.length === 0) {
         taskListContainer.innerHTML = '<p class="loading-text">Bu kritere uygun görev bulunamadı.</p>';
         return;
@@ -179,10 +180,10 @@ function renderTasks(tasksToRender) {
                 </div>
             </div>
             <div class="task-actions">
-                ${taskStatus !== 2 ? `<button class="btn-action btn-update">Tamamla</button>` : ''}
-                <button class="btn-action btn-edit">Düzenle</button>
-                <button class="btn-action btn-delete">Sil</button>
-            </div>
+                        ${taskStatus !== 2 ? `<button class="btn-action btn-update" onclick="completeTask(${task.id || task.Id})">Tamamla</button>` : ''}
+                        <button class="btn-action btn-edit" onclick="editTask(${task.id || task.Id})">Düzenle</button>
+                        <button class="btn-action btn-delete" onclick="removeTask(${task.id || task.Id})">Sil</button>
+                    </div>
         `;
 
         if (taskStatus !== 2) {
@@ -278,18 +279,85 @@ function resetForm() {
     submitBtn.style.backgroundColor = "var(--primary)"; 
 }
 
-async function completeTask(id, title, description, priority) {
-    const updateData = { 
-        id: id, title: title, description: description, status: 2, priority: priority 
-    };
-    const success = await updateTaskInAPI(id, updateData);
-    if (success) await loadTasks();
-}
+async function completeTask(id) {
+    const token = localStorage.getItem('jwtToken');
 
+    try {
+        // Bulduğumuz 5072 portuyla, arka uca az önce yazdığımız özel kapıya gidiyoruz
+        const response = await fetch(`http://localhost:5072/api/tasks/${id}/complete`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            // 1. Önce arka uçtan güncel listeyi çekip ekrana çizdiriyoruz
+            if (typeof loadTasks === "function") {
+                await loadTasks(); 
+            }
+            
+            // 2. ÇÖZÜM BURASI: Güncel görev listesini (window.currentTasks) Dashboard'a parametre olarak gönderiyoruz!
+            if (typeof updateDashboard === "function" && window.currentTasks) {
+                updateDashboard(window.currentTasks); 
+            } 
+            
+            if (typeof renderDashboard === "function" && window.currentTasks) {
+                renderDashboard(window.currentTasks); 
+            }
+
+            if (typeof showToast === "function") showToast("Görev başarıyla tamamlandı!", "success");
+        }else {
+            console.error("API Hatası:", await response.text());
+            if (typeof showToast === "function") showToast("Güncellenirken bir hata oluştu.", "error");
+        }
+    } catch (err) {
+        console.error("Bağlantı Hatası:", err);
+    }
+}
 async function removeTask(id) {
-    if (confirm("Bu görevi kalıcı olarak silmek istediğinize emin misiniz?")) {
-        const success = await deleteTaskFromAPI(id);
-        if (success) await loadTasks();
+    // Modern onay penceresini çağırıyoruz
+    const result = await Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu görevi kalıcı olarak silmek üzeresiniz, geri dönüşü yoktur!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33', // Kırmızı silme butonu
+        cancelButtonColor: '#3085d6', // Mavi iptal butonu
+        confirmButtonText: 'Evet, Sil!',
+        cancelButtonText: 'İptal',
+        background: '#fff',
+        borderRadius: '10px'
+    });
+
+    // Eğer kullanıcı "Evet, Sil!" butonuna tıkladıysa
+    if (result.isConfirmed) {
+        try {
+            // Projendeki mevcut API silme fonksiyonunu çağırıyoruz
+            const success = await deleteTaskFromAPI(id); 
+            
+            if (success) {
+                // Listeyi ve panoyu (dashboard) güncelliyoruz
+                if (typeof loadTasks === "function") await loadTasks();
+                if (typeof updateDashboard === "function" && window.currentTasks) updateDashboard(window.currentTasks);
+                if (typeof renderDashboard === "function" && window.currentTasks) renderDashboard(window.currentTasks);
+
+                // Silme başarılı olduktan sonra çıkan küçük başarı animasyonu
+                Swal.fire({
+                    title: 'Silindi!',
+                    text: 'Görev başarıyla silindi.',
+                    icon: 'success',
+                    timer: 1500, // 1.5 saniye sonra kendi kapanır
+                    showConfirmButton: false
+                });
+            } else {
+                Swal.fire('Hata!', 'Görev silinirken bir sorun oluştu.', 'error');
+            }
+        } catch (err) {
+            console.error("Silme Hatası:", err);
+            Swal.fire('Bağlantı Hatası!', 'Sunucuya ulaşılamadı.', 'error');
+        }
     }
 }
 
@@ -338,4 +406,22 @@ function getStatusInfo(statusValue) {
         case 2: return { text: 'Tamamlandı', class: 'badge-green' };
         default: return { text: 'Belirsiz', class: 'badge-blue' };
     }
+    // YÖNETİCİ PANELİ YETKİ KONTROLÜ (Global Scope)
+window.checkAdminAccess = function(event) {
+    event.preventDefault(); 
+    
+    // Rolü okuma kısmı (Giriş yaparken nasıl kaydettiysen o geçerli olur)
+    const userRole = localStorage.getItem('role') || localStorage.getItem('userRole'); 
+
+    if (userRole === 'Admin') {
+        window.location.href = 'admin.html';
+    } else {
+        // Eğer showToast ana sayfada çalışmazsa standart alert de kullanabiliriz:
+        if (typeof showToast === "function") {
+            showToast("Bu alana erişim yetkiniz bulunmamaktadır. Sadece yöneticiler giriş yapabilir.", "error");
+        } else {
+            alert("Bu alana erişim yetkiniz bulunmamaktadır. Sadece yöneticiler giriş yapabilir.");
+        }
+    }
+};
 }

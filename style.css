@@ -401,3 +401,45 @@ hr {
 .toast-error { background-color: #dc3545; } /* Kırmızı (Hata) */
 .toast-success { background-color: #28a745; } /* Yeşil (Başarılı) */
 .toast-info { background-color: #17a2b8; } /* Mavi (Bilgi) */
+/* 1. Sayfanın ana kapsayıcısını genişletiyoruz (Ekranda boşluk kalmasın) */
+/* (Not: Eğer senin projende bu class .container değil de .wrapper vs. ise onu kullan) */
+.container {
+    max-width: 1200px; /* Genişliği artırdık */
+    width: 95%;
+    margin: 0 auto;
+}
+
+/* 2. Yatay Düzenin Kendisi (Sihirli Kısım) */
+.dashboard-horizontal {
+    display: flex;
+    gap: 30px; /* Sağ ve sol panel arasına 30px boşluk */
+    align-items: flex-start; /* Elemanları yukarıya yaslar (uzamasınlar diye) */
+    margin-top: 20px;
+}
+
+/* 3. Kolon Genişlikleri */
+.left-panel {
+    flex: 0 0 35%; /* Sol taraf (Form ve İstatistik) ekranın %35'ini kaplasın */
+}
+
+.right-panel {
+    flex: 1; /* Sağ taraf (Görev Listesi) kalan tüm boşluğu otomatik doldursun */
+}
+
+/* 4. Mobil Uyumluluk (Telefonlarda eski dikey haline dönsün) */
+@media (max-width: 768px) {
+    .dashboard-horizontal {
+        flex-direction: column; /* Alt alta diz */
+    }
+    .left-panel, .right-panel {
+        width: 100%; /* Telefonlarda tam genişlik olsun */
+    }
+}
+/* İstatistik kartlarındaki başlıkların hizasını eşitlemek için */
+.stat-card h3 {
+    min-height: 48px; /* Tek satır da olsa 2 satırlık boşluk ayırır */
+    display: flex;
+    align-items: center; /* Metni dikeyde ortalar */
+    justify-content: center; /* Metni yatayda ortalar */
+    margin-bottom: 10px; /* Rakamla arasına biraz nefes alma boşluğu bırakır */
+}
