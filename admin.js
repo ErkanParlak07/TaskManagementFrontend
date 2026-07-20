@@ -81,10 +81,9 @@ function renderTable() {
             <td style="padding: 10px;">${user.id}</td>
             <td style="padding: 10px; font-weight: bold;">${user.username}</td>
             <td style="padding: 10px;">${user.role}</td>
-            <td style="padding: 10px; display: flex; gap: 8px;">
-                <!-- YENİ: Görevler Butonu -->
+            <td style="padding: 10px; display: flex; gap: 8px; align-items: center;">
+                <button onclick="openAssignTaskModal(${user.id}, '${user.username}')" class="btn-action" style="background-color: #ffc107; color: black; font-weight: bold;">Görev Ata</button>
                 <button onclick="openTasksModal(${user.id}, '${user.username}')" class="btn-action" style="background-color: #17a2b8;">Görevler</button>
-                
                 <button onclick="openEditModal(${user.id})" class="btn-action" style="background-color: #007bff;">Düzenle</button>
                 ${actionButton}
             </td>
@@ -223,4 +222,58 @@ async function openTasksModal(userId, username) {
 // GÖREVLER MODALINI KAPATMA
 function closeTasksModal() {
     document.getElementById('tasks-modal').style.display = 'none';
+    
+}// GÖREV ATAMA MODALINI AÇ/KAPAT
+function openAssignTaskModal(userId, username) {
+    document.getElementById('assign-task-userid').value = userId;
+    document.getElementById('assign-task-title').innerText = `${username} İçin Yeni Görev`;
+    
+    // Tüm kutuları sıfırla
+    document.getElementById('assign-task-name').value = '';
+    document.getElementById('assign-task-desc').value = '';
+    document.getElementById('assign-task-priority').value = '1'; // Orta önceliği varsayılan yap
+    
+    document.getElementById('assign-task-modal').style.display = 'flex';
 }
+
+function closeAssignTaskModal() {
+    document.getElementById('assign-task-modal').style.display = 'none';
+}
+
+// FORMU GÖNDER VE GÖREVİ ATA
+document.getElementById('assign-task-form').addEventListener('submit', async (e) => {
+    e.preventDefault(); 
+    
+    const userId = document.getElementById('assign-task-userid').value;
+    const taskTitle = document.getElementById('assign-task-name').value;
+    const taskDesc = document.getElementById('assign-task-desc').value;
+    const taskPriority = parseInt(document.getElementById('assign-task-priority').value);
+    
+    const token = localStorage.getItem('jwtToken');
+
+    try {
+        const response = await fetch(`${API_ADMIN_URL}/user-tasks/${userId}`, {
+            method: 'POST',
+            headers: { 
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json' 
+            },
+            // Güncellenen DTO'ya uygun olarak gönderiyoruz:
+            body: JSON.stringify({ 
+                title: taskTitle,
+                description: taskDesc,
+                priority: taskPriority
+            }) 
+        });
+
+        if (response.ok) {
+            showToast("Görev başarıyla atandı!", "success");
+            closeAssignTaskModal();
+        } else {
+            showToast("Görev atanırken bir hata oluştu.", "error");
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+        showToast("Sunucuya bağlanılamadı.", "error");
+    }
+})
