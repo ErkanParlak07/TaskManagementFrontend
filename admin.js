@@ -28,10 +28,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Checkbox'a tıklanınca tabloyu yeniden çizecek olay dinleyicisi
-    document.getElementById('show-passive-chk').addEventListener('change', renderTable);
+    document.getElementById('show-inactive')?.addEventListener('change', renderTable);
     
     // Sayfa açıldığında verileri yükle
     await loadUsers();
+    
 });
 
 // API'den kullanıcıları çeken fonksiyon
@@ -57,11 +58,12 @@ async function loadUsers() {
 
 // Tabloyu ekrana basan fonksiyon
 function renderTable() {
-    const tbody = document.getElementById('user-list');
+    const tbody = document.getElementById('admin-user-list');
+    if (!tbody) return;
     tbody.innerHTML = '';
     
     // Checkbox işaretli mi? (true/false)
-    const showPassive = document.getElementById('show-passive-chk').checked;
+    const showPassive = document.getElementById('show-inactive')?.checked || false;
 
     // Sadece checkbox'ın durumuna uyanları filtrele
     const filteredUsers = usersData.filter(u => u.isDeleted === showPassive);
@@ -72,9 +74,9 @@ function renderTable() {
         
         let actionButton = '';
         if (user.isDeleted) {
-            actionButton = `<button onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #28a745;">Aktif Et</button>`;
+            actionButton = `<button type="button" onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #28a745;">Aktif Et</button>`;
         } else {
-            actionButton = `<button onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #d9534f;">Pasif Et</button>`;
+            actionButton = `<button type="button" onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #d9534f;">Pasif Et</button>`;
         }
 
         row.innerHTML = `
@@ -82,9 +84,9 @@ function renderTable() {
             <td style="padding: 10px; font-weight: bold;">${user.username}</td>
             <td style="padding: 10px;">${user.role}</td>
             <td style="padding: 10px; display: flex; gap: 8px; align-items: center;">
-                <button onclick="openAssignTaskModal(${user.id}, '${user.username}')" class="btn-action" style="background-color: #ffc107; color: black; font-weight: bold;">Görev Ata</button>
-                <button onclick="openTasksModal(${user.id}, '${user.username}')" class="btn-action" style="background-color: #17a2b8;">Görevler</button>
-                <button onclick="openEditModal(${user.id})" class="btn-action" style="background-color: #007bff;">Düzenle</button>
+                
+               
+                <button type="button" onclick="openEditModal(${user.id})" class="btn-action" style="background-color: #007bff;">Düzenle</button>
                 ${actionButton}
             </td>
         `;
@@ -107,10 +109,15 @@ async function toggleUser(id) {
         showToast("İşlem başarısız oldu.", "error");
     }
 }
-// MODAL AÇMA İŞLEMİ (Verileri forma doldurur)
+// 1. MODAL AÇMA İŞLEMİ (Verileri forma doldurur)
 function openEditModal(id) {
-    // Tıklanan kullanıcıyı listemizden bul
-    const user = usersData.find(u => u.id === id);
+    // Görünümü kesin olarak Kullanıcı Yönetimi sekmesinde sabitle
+    document.getElementById('UserManagement').style.display = 'block';
+    document.getElementById('AdminDashboard').style.display = 'none';
+    document.getElementsByClassName('tab-btn')[0].classList.add('active'); // Kullanıcı Yönetimi butonunu aktif yap
+    document.getElementsByClassName('tab-btn')[1].classList.remove('active');
+
+    const user = usersData ? usersData.find(u => u.id === id) : null;
     if (!user) return;
 
     // Formdaki kutucukları kullanıcının mevcut bilgileriyle doldur
@@ -120,7 +127,7 @@ function openEditModal(id) {
     document.getElementById('edit-role').value = user.role;
     document.getElementById('edit-password').value = '';
 
-    // Modalı görünür yap
+    // HATA ÇÖZÜLDÜ: 'modal' değişkeni yerine doğrudan ID kullanıyoruz
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -130,7 +137,7 @@ function closeModal() {
 }
 
 // FORM GÖNDERME İŞLEMİ (Veritabanına kaydetme)
-document.getElementById('edit-form').addEventListener('submit', async (e) => {
+document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
     e.preventDefault(); // Sayfanın yenilenmesini engelle
     
     const id = document.getElementById('edit-id').value;
@@ -164,129 +171,15 @@ document.getElementById('edit-form').addEventListener('submit', async (e) => {
         console.error("Hata:", err);
     }
 });
-// GÖREVLER MODALINI AÇMA VE VERİLERİ ÇEKME
-async function openTasksModal(userId, username) {
-    // 1. Modalı görünür yap ve başlığı ayarla
-    document.getElementById('tasks-modal-title').innerText = `${username} Adlı Kişinin Görevleri`;
-    const tasksList = document.getElementById('user-tasks-list');
-    tasksList.innerHTML = '<li style="text-align: center; color: #888;">Görevler yükleniyor...</li>';
-    document.getElementById('tasks-modal').style.display = 'flex';
 
-    const token = localStorage.getItem('jwtToken');
 
-    try {
-        // 2. API'den o kullanıcının görevlerini çek
-        const response = await fetch(`${API_ADMIN_URL}/user-tasks/${userId}`, {
-            method: 'GET',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            const tasks = await response.json();
-            tasksList.innerHTML = ''; // Yükleniyor yazısını temizle
-
-            // 3. Görevleri ekrana çiz
-            if (tasks.length === 0) {
-                tasksList.innerHTML = '<li style="text-align: center; color: #888;">Bu kullanıcının henüz bir görevi yok.</li>';
-                return;
-            }
-
-           // Görevleri listelemek için HTML oluşturma kısmı
-        const tasksListContainer = document.getElementById('user-tasks-list'); // HTML'deki kendi container ID'n neyse onunla eşleştiğinden emin ol (örn: tasksList, user-tasks-list vb.)
-        tasksListContainer.innerHTML = ''; // Önce listeyi temizle
-
-        if (tasks.length === 0) {
-            tasksListContainer.innerHTML = '<p style="text-align: center; color: #777; margin-top: 20px;">Bu kullanıcıya ait görev bulunmuyor.</p>';
-        } else {
-            tasks.forEach(task => {
-                // YENİ: C# ve JS büyük/küçük harf uyuşmazlığını çözen garantili okuma yöntemi
-                // Hem mantıksal True hem de yazı olarak gelen "true" ihtimallerini zırhlıyoruz
-                const isDone = task.isCompleted === true || task.IsCompleted === true || task.isCompleted === "true" || task.isCompleted === "True";
-                const prio = task.priority !== undefined ? task.priority : task.Priority;
-                const desc = task.description || task.Description;
-                const title = task.title || task.Title;
-
-                // 1. Öncelik Değerini Renkli Rozetlere (Badge) Çevirme
-                let priorityText = "Belirsiz";
-                let priorityColor = "#6c757d"; 
-                
-                if (prio === 2) { priorityText = "Yüksek"; priorityColor = "#dc3545"; } 
-                else if (prio === 1) { priorityText = "Orta"; priorityColor = "#ffc107"; } 
-                else if (prio === 0) { priorityText = "Düşük"; priorityColor = "#28a745"; } 
-
-                // 2. Tamamlanma Durumuna Göre Stil Ayarları (Yeşil Çizgi Eklendi)
-                // text-decoration-color: #28a745 yazının üstünü doğrudan yeşil renkle çizer
-                let titleStyle = isDone 
-                    ? "text-decoration: line-through; text-decoration-color: #28a745; text-decoration-thickness: 2px; color: #999;" 
-                    : "color: #333;";
-                let statusText = isDone ? "(Tamamlandı)" : "(Devam Ediyor)";
-                let statusColor = isDone ? "#28a745" : "#333";
-
-                // 3. Detay (Açıklama) Metni Kontrolü
-                let descriptionHtml = desc 
-                    ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #666; line-height: 1.4;">${desc}</p>` 
-                    : `<p style="margin: 8px 0 0 0; font-size: 13px; color: #aaa; font-style: italic;">Detay eklenmemiş.</p>`;
-
-                // 4. Yeni ve Şık "Görev Kartı" Tasarımı
-                let taskCard = `
-                    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin-bottom: 12px; background-color: #fafafa; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-                        
-                        <!-- Üst Kısım: Başlık ve Durum -->
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 5px;">
-                            <strong style="${titleStyle} font-size: 16px; flex: 1;">${title}</strong>
-                            <span style="color: ${statusColor}; font-size: 12px; font-weight: bold; margin-left: 10px;">${statusText}</span>
-                        </div>
-                        
-                        <!-- Alt Kısım: Açıklama ve Öncelik Rozeti -->
-                        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 10px;">
-                            <div style="flex: 1; padding-right: 15px;">
-                                ${descriptionHtml}
-                            </div>
-                            <div style="background-color: ${priorityColor}; color: ${prio === 1 ? 'black' : 'white'}; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap;">
-                                ${priorityText} Öncelik
-                            </div>
-                        </div>
-
-                    </div>
-                `;
-                
-                tasksListContainer.innerHTML += taskCard;
-            });
-        }
-
-        } else {
-            tasksList.innerHTML = '<li style="color: #d9534f;">Görevler alınırken bir hata oluştu.</li>';
-            showToast("Kullanıcının görevleri çekilemedi.", "error");
-        }
-    } catch (err) {
-        console.error("Hata:", err);
-        tasksList.innerHTML = '<li style="color: #d9534f;">Bağlantı hatası oluştu.</li>';
-    }
-}
-
-// GÖREVLER MODALINI KAPATMA
-function closeTasksModal() {
-    document.getElementById('tasks-modal').style.display = 'none';
-    
-}// GÖREV ATAMA MODALINI AÇ/KAPAT
-function openAssignTaskModal(userId, username) {
-    document.getElementById('assign-task-userid').value = userId;
-    document.getElementById('assign-task-title').innerText = `${username} İçin Yeni Görev`;
-    
-    // Tüm kutuları sıfırla
-    document.getElementById('assign-task-name').value = '';
-    document.getElementById('assign-task-desc').value = '';
-    document.getElementById('assign-task-priority').value = '1'; // Orta önceliği varsayılan yap
-    
-    document.getElementById('assign-task-modal').style.display = 'flex';
-}
 
 function closeAssignTaskModal() {
     document.getElementById('assign-task-modal').style.display = 'none';
 }
 
 // FORMU GÖNDER VE GÖREVİ ATA
-document.getElementById('assign-task-form').addEventListener('submit', async (e) => {
+document.getElementById('assign-task-form')?.addEventListener('submit', async (e) => {
     e.preventDefault(); 
     
     const userId = document.getElementById('assign-task-userid').value;
@@ -321,4 +214,295 @@ document.getElementById('assign-task-form').addEventListener('submit', async (e)
         console.error("Hata:", err);
         showToast("Sunucuya bağlanılamadı.", "error");
     }
-})
+   
+
+}); 
+
+// Güvenlik loglarını API'den çeken ana fonksiyon (En Güncel Hata Avcısı Versiyonu)
+async function loadSecurityLogs() {
+    const token = localStorage.getItem('jwtToken');
+    const recentTbody = document.getElementById('recent-logins-list');
+    const failedTbody = document.getElementById('failed-logins-list');
+    
+    try {
+        const response = await fetch(`${API_ADMIN_URL}/logs`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            renderLogsToTable(data.recentLogins, 'recent-logins-list', 'status-success');
+            renderLogsToTable(data.failedLogins, 'failed-logins-list', 'status-danger');
+        } else {
+            const errorText = await response.text();
+            const errMsg = `<tr><td colspan="3" style="text-align: center; color: #dc2626; font-weight: bold;">Backend Hatası: ${response.status} <br> C# API bu isteği reddetti.</td></tr>`;
+            if (recentTbody) recentTbody.innerHTML = errMsg;
+            if (failedTbody) failedTbody.innerHTML = errMsg;
+            console.error("API Hata Kodu:", response.status, errorText);
+        }
+    } catch (error) {
+        const errMsg = `<tr><td colspan="3" style="text-align: center; color: #dc2626; font-weight: bold;">Sunucuya Bağlanılamadı! <br> C# terminalinde 'dotnet run' çalışıyor mu?</td></tr>`;
+        if (recentTbody) recentTbody.innerHTML = errMsg;
+        if (failedTbody) failedTbody.innerHTML = errMsg;
+        console.error("Bağlantı Hatası:", error);
+    }
+}
+
+// Gelen JSON dizisini HTML satırlarına çeviren yardımcı fonksiyon
+function renderLogsToTable(logs, elementId, badgeClass) {
+    const tbody = document.getElementById(elementId);
+    
+    if (!tbody) return; 
+
+    tbody.innerHTML = ''; 
+
+    if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #94a3b8;">Henüz kayıt bulunmuyor.</td></tr>';
+        return;
+    }
+
+    logs.forEach(log => {
+        const dateObj = new Date(log.attemptDate);
+        const dateStr = dateObj.toLocaleDateString('tr-TR') + ' ' + dateObj.toLocaleTimeString('tr-TR', {hour: '2-digit', minute:'2-digit'});
+
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${log.username}</strong></td>
+                <td>${dateStr}</td>
+                <td><span class="status-badge ${badgeClass}">${log.errorMessage}</span></td>
+            </tr>
+        `;
+        
+    });
+    
+}
+// ==========================================
+// YENİ EKLENEN 3. SEKME: GÖREV YÖNETİMİ CRUD
+// ==========================================
+
+// 1. Sekmeye tıklandığında Select kutusunu kullanıcılara doldurur
+function refreshTaskUsers() {
+    const select = document.getElementById('task-user-select');
+    // Globaldeki usersData dizisi boşsa hiçbir şey yapma (Zaten API'den çekilmiş olmalı)
+    if (!usersData || usersData.length === 0) return; 
+
+    select.innerHTML = '<option value="">-- İşlem Yapılacak Kullanıcıyı Seçin --</option>';
+    
+    // Sadece silinmemiş (aktif) kullanıcıları listeye ekle
+    usersData.filter(u => !u.isDeleted).forEach(user => {
+        select.innerHTML += `<option value="${user.id}">${user.username} (${user.role})</option>`;
+    });
+}
+
+// 2. Select'ten kullanıcı seçildiğinde görevlerini tabloya çeker
+async function loadTasksForSelectedUser() {
+    const userId = document.getElementById('task-user-select').value;
+    const btnCreate = document.getElementById('btn-create-task');
+    const tbody = document.getElementById('task-management-list');
+
+    // Seçim iptal edildiyse
+    if (!userId) {
+        btnCreate.disabled = true;
+        btnCreate.style.cursor = 'not-allowed';
+        btnCreate.style.opacity = '0.5';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 30px;">Kayıtları görmek için lütfen üstten kullanıcı seçin.</td></tr>';
+        return;
+    }
+
+    // Seçim yapıldıysa "Görev Ekle" butonunu aktif et
+    btnCreate.disabled = false;
+    btnCreate.style.cursor = 'pointer';
+    btnCreate.style.opacity = '1';
+
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">Görevler Yükleniyor...</td></tr>';
+    
+    const token = localStorage.getItem('jwtToken');
+    try {
+        const response = await fetch(`${API_ADMIN_URL}/user-tasks/${userId}`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const tasks = await response.json();
+            tbody.innerHTML = '';
+            
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 20px;">Bu kullanıcıya ait görev bulunmuyor.</td></tr>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                // Verileri güvenli hale getirme (Büyük küçük harf hassasiyeti vb.)
+                const id = task.id || task.Id;
+                const title = task.title || task.Title;
+                const desc = (task.description || task.Description || '').replace(/'/g, "\\'"); // Tırnak hatasını önlemek için escape
+                const prio = task.priority !== undefined ? task.priority : task.Priority;
+                const isDone = task.isCompleted === true || task.IsCompleted === true || task.isCompleted === "true";
+
+                // Öncelik Görünümü
+                let prioBadge = prio === 2 ? `<span class="status-badge status-danger">Yüksek</span>` 
+                              : prio === 1 ? `<span class="status-badge" style="background:#fef08a; color:#854d0e;">Orta</span>` 
+                              : `<span class="status-badge status-success">Düşük</span>`;
+                
+                // Durum Görünümü
+                let statusBadge = isDone ? `<span class="status-badge status-success">Tamamlandı</span>` 
+                                         : `<span class="status-badge" style="background:#e2e8f0; color:#475569;">Devam Ediyor</span>`;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="padding:12px; font-weight:bold;">${title}</td>
+                        <td style="padding:12px; font-size:13px;">${desc}</td>
+                        <td style="padding:12px;">${prioBadge}</td>
+                        <td style="padding:12px;">${statusBadge}</td>
+                        <td style="padding:12px; text-align:right;">
+                            <button type="button" onclick="openCrudTaskModal(${id}, '${title}', '${desc}', ${prio}, ${isDone})" style="padding:6px 12px; background:#3b82f6; color:white; border:none; border-radius:4px; cursor:pointer; margin-right:5px;">Düzenle</button>
+                            <button type="button" onclick="deleteTask(${id})" style="padding:6px 12px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;">Sil</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    } catch (err) {
+        console.error("Hata:", err);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #dc2626;">Bağlantı hatası oluştu.</td></tr>';
+    }
+}
+
+// 3. Ekleme ve Güncelleme Modalını Açar
+function openCrudTaskModal(id = null, title = '', desc = '', prio = 1, isDone = false) {
+    
+    // Verileri HTML kutucuklarına doldur
+    document.getElementById('crud-task-id').value = id || '';
+    document.getElementById('crud-task-name').value = title;
+    document.getElementById('crud-task-desc').value = desc;
+    document.getElementById('crud-task-priority').value = prio;
+    document.getElementById('crud-task-status').value = isDone ? "true" : "false";
+
+    // Modal başlığını ID durumuna göre değiştir
+    document.getElementById('crud-task-title').innerText = id ? 'Görevi Düzenle' : 'Yeni Görev Ekle';
+    
+    // Yeni görev ekleniyorsa Durum alanını gizle, düzenleniyorsa göster
+    const statusContainer = document.getElementById('status-container');
+    if (statusContainer) {
+        statusContainer.style.display = id ? 'block' : 'none';
+    }
+
+    // Modalı ekranda göster
+    document.getElementById('crud-task-modal').style.display = 'flex';
+}
+
+// 4. Form Gönderimi (Yeni Görev POST veya Mevcut Görev PUT)
+document.getElementById('crud-task-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('jwtToken');
+    const userId = document.getElementById('task-user-select').value;
+    const taskId = document.getElementById('crud-task-id').value;
+    
+    const isDone = document.getElementById('crud-task-status').value === "true";
+
+    // DİKKAT: C# API'nin reddetmemesi için id ve userId verilerini de pakete ekliyoruz!
+    const taskData = {
+        id: taskId ? parseInt(taskId) : 0,
+        userId: parseInt(userId),
+        title: document.getElementById('crud-task-name').value,
+        description: document.getElementById('crud-task-desc').value,
+        priority: parseInt(document.getElementById('crud-task-priority').value),
+        isCompleted: isDone,
+        status: isDone ? 2 : 0 
+    };
+
+    try {
+        let response;
+        if (taskId) {
+            // GÜNCELLEME İŞLEMİ (PUT)
+            response = await fetch(`${API_ADMIN_URL}/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(taskData)
+            });
+        } else {
+            // YENİ EKLEME İŞLEMİ (POST)
+            response = await fetch(`${API_ADMIN_URL}/user-tasks/${userId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(taskData)
+            });
+        }
+
+        if (response.ok) {
+            showToast(taskId ? "Görev başarıyla güncellendi!" : "Yeni görev eklendi!", "success");
+            document.getElementById('crud-task-modal').style.display = 'none';
+            await loadTasksForSelectedUser(); // Tabloyu tazele
+        } else {
+            // Hatanın ne olduğunu C#'tan çekip ekrana yazdırıyoruz
+            const errorText = await response.text();
+            console.error("C# API Hatası:", errorText);
+            showToast("Hata: " + (errorText || response.status + " Kodu Döndü"), "error");
+        }
+    } catch (err) {
+        showToast("Sunucu ile iletişim kurulamadı.", "error");
+    }
+});
+
+// 5. Görev Silme (DELETE) - Modern Onay Pencereli
+async function deleteTask(taskId) {
+    // Tarayıcının sıkıcı uyarısı yerine modern SweetAlert2 uyarısı
+    const result = await Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu görevi tamamen silmek üzeresiniz, bu işlem geri alınamaz!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444', // Silme işlemine uygun kırmızı
+        cancelButtonColor: '#64748b',  // İptal için nötr gri
+        confirmButtonText: 'Evet, Sil!',
+        cancelButtonText: 'İptal',
+        background: '#ffffff',
+        color: '#1e293b',
+        borderRadius: '8px'
+    });
+
+    // Eğer kullanıcı "İptal" butonuna basarsa (veya pencereyi kapatırsa) işlemi durdur
+    if (!result.isConfirmed) {
+        return; 
+    }
+
+    // Kullanıcı "Evet, Sil!" dediyse silme işlemine devam et
+    const token = localStorage.getItem('jwtToken');
+    try {
+        const response = await fetch(`${API_ADMIN_URL}/tasks/${taskId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            // Silme işlemi başarılıysa küçük bir başarı bildirimi göster
+            Swal.fire({
+                title: 'Silindi!',
+                text: 'Görev başarıyla sistemden kaldırıldı.',
+                icon: 'success',
+                timer: 1500, // 1.5 saniye sonra kendi kendine kapanır
+                showConfirmButton: false
+            });
+            await loadTasksForSelectedUser(); // Tabloyu tazele
+        } else {
+            const errorText = await response.text();
+            console.error("Silme Hatası:", errorText);
+            Swal.fire('Hata!', "Silinemedi! Hata: " + (errorText || response.status), 'error');
+        }
+    } catch (err) {
+        Swal.fire('Bağlantı Hatası!', "Sunucu ile iletişim kurulamadı.", 'error');
+    }
+}
+
+
+// Sayfa yüklendiğinde logları doğrudan çek
+loadSecurityLogs();
+
+
+
+
+

@@ -2,138 +2,337 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yönetici Paneli</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Sekme (Tab) Menüsü Tasarımı */
+        .tab-menu {
+            display: flex;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            background-color: transparent;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .tab-btn:hover {
+            color: #6366f1;
+        }
+        .tab-btn.active {
+            color: #6366f1;
+            border-bottom: 3px solid #6366f1;
+        }
+        .tab-content {
+            display: none; /* Varsayılan olarak sekmeleri gizle */
+            animation: fadeIn 0.4s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Dashboard Tabloları Tasarımı */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .log-table th, .log-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .log-table th {
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-success { background-color: #dcfce7; color: #16a34a; }
+        .status-danger { background-color: #fee2e2; color: #dc2626; }
+        
+        /* Mobil Uyumluluk */
+        @media (max-width: 768px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
 </head>
-<body class="auth-body">
-    <div class="auth-container" style="max-width: 800px;">
-        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-            <h2>Kullanıcı Yönetimi</h2>
-            <a href="index.html" class="btn-action">Görevlere Dön</a>
+<body>
+    <div class="container" style="max-width: 1000px; margin: 40px auto; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        
+        <!-- ÜST KISIM (BAŞLIK VE BUTON) -->
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+            <h1 style="margin: 0; font-size: 24px; color: #1e1b4b;">Yönetici Paneli</h1>
+            
+            <!-- Butona "width: auto" ve "white-space: nowrap" ekleyerek yayılmasını kesin olarak engelledik -->
+            <button onclick="window.location.href='index.html'" style="width: max-content !important; flex: none !important; white-space: nowrap !important; background-color: #6366f1; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);">
+    Görevlere Dön
+</button>
         </header>
-<!-- Pasif kullanıcıları gösterme butonu -->
-        <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="show-passive-chk" style="width: 16px; height: 16px; cursor: pointer;">
-            <label for="show-passive-chk" style="cursor: pointer; font-weight: bold;">Pasif Edilen Kullanıcıları Göster</label>
+
+        <!-- SEKME BUTONLARI -->
+        <div class="tab-menu">
+            <!-- Varsayılan olarak aktif sınıfını Kullanıcı Yönetimine veriyoruz -->
+            <button class="tab-btn active" onclick="openTab(event, 'UserManagement')">Kullanıcı Yönetimi</button>
+            <button class="tab-btn" onclick="openTab(event, 'AdminDashboard')">Güvenlik Dashboard</button>
+            <button class="tab-btn" onclick="openTab(event, 'TaskManagement'); refreshTaskUsers();">Görev Yönetimi</button>
         </div>
-        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+
+        <!-- 1. SEKME İÇERİĞİ: KULLANICI YÖNETİMİ -->
+        <div id="UserManagement" class="tab-content" style="display: block;">
+            <!-- GÜNCELLENEN CHECKBOX KISMI -->
+            <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="show-inactive" style="margin: 0; width: 18px; height: 18px; cursor: pointer;"> 
+                <label for="show-inactive" style="font-weight: bold; cursor: pointer; color: #334155; margin: 0; user-select: none;">Pasif Edilen Kullanıcıları Göster</label>
+            </div>
+            
+            <table style="width: 100%; text-align: left; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #ddd;">
+                        <th style="padding: 10px;">ID</th>
+                        <th>Kullanıcı Adı</th>
+                        <th>Rol</th>
+                        <th>İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-user-list">
+                    <!-- Dinamik Kullanıcı Listesi Buraya Gelecek -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 2. SEKME İÇERİĞİ: GÜVENLİK DASHBOARD -->
+        <div id="AdminDashboard" class="tab-content">
+            <div class="dashboard-grid">
+    <!-- Başarılı Girişler Tablosu -->
+    <div>
+        <h3 style="margin-top: 0; color: #16a34a;">Son Giriş Yapanlar</h3>
+        <table class="log-table">
             <thead>
-                <tr style="border-bottom: 2px solid #ddd;">
-                    <th style="padding: 10px;">ID</th>
-                    <th style="padding: 10px;">Kullanıcı Adı</th>
-                    <th style="padding: 10px;">Rol</th>
-                    <th style="padding: 10px;">İşlemler</th>
+                <tr>
+                    <th>Kullanıcı Adı</th>
+                    <th>Tarih / Saat</th>
+                    <th>Durum</th>
                 </tr>
             </thead>
-            <tbody id="user-list">
-                </tbody>
+            <!-- DİKKAT: Verilerin geleceği ID burası, bu etiket asla silinmemeli -->
+            <tbody id="recent-logins-list">
+                <tr><td colspan="3" style="text-align: center;">Yükleniyor...</td></tr>
+            </tbody>
         </table>
     </div>
 
-    
-    <!-- DÜZENLEME MODALI (Başlangıçta Gizli) -->
-    <div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 350px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-            <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Kullanıcı Düzenle</h3>
+    <!-- Hatalı Girişler Tablosu -->
+    <div>
+        <h3 style="margin-top: 0; color: #dc2626;">Hatalı Giriş Denemeleri</h3>
+        <table class="log-table">
+            <thead>
+                <tr>
+                    <th>Kullanıcı Adı</th>
+                    <th>Tarih / Saat</th>
+                    <th>Durum</th>
+                </tr>
+            </thead>
+            <!-- DİKKAT: Verilerin geleceği ID burası, bu etiket asla silinmemeli -->
+            <tbody id="failed-logins-list">
+                 <tr><td colspan="3" style="text-align: center;">Yükleniyor...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+<!-- 3. SEKME İÇERİĞİ: GÖREV YÖNETİMİ -->
+<div id="TaskManagement" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div style="flex: 1; margin-right: 20px;">
+            <label style="font-weight: bold; color: #334155;">İşlem Yapılacak Kullanıcıyı Seçin:</label>
+            <select id="task-user-select" onchange="loadTasksForSelectedUser()" style="width: 100%; padding: 10px; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px;">
+                <option value="">-- Önce Bir Kullanıcı Seçin --</option>
+            </select>
+        </div>
+        <button id="btn-create-task" onclick="openCrudTaskModal()" disabled style="padding: 10px 20px; background-color: #10b981; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: not-allowed; opacity: 0.5; transition: 0.3s;">
+            + Yeni Görev Ekle
+        </button>
+    </div>
+
+    <table style="width: 100%; text-align: left; border-collapse: collapse;">
+        <thead>
+            <tr style="border-bottom: 2px solid #ddd; background-color: #f8fafc;">
+                <th style="padding: 12px;">Görev Adı</th>
+                <th style="padding: 12px;">Açıklama</th>
+                <th style="padding: 12px;">Öncelik</th>
+                <th style="padding: 12px;">Durum</th>
+                <th style="padding: 12px; text-align: right;">İşlemler</th>
+            </tr>
+        </thead>
+        <tbody id="task-management-list">
+            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 30px;">Kayıtları görmek için lütfen üstten kullanıcı seçin.</td></tr>
+        </tbody>
+    </table>
+</div>
+
+    <!-- Sekme Geçişlerini Sağlayan JavaScript Code -->
+    <script>
+        function openTab(evt, tabName) {
+            // 1. Tüm sekme içeriklerini gizle
+            let tabContents = document.getElementsByClassName("tab-content");
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].style.display = "none";
+            }
+
+            // 2. Tüm sekme butonlarından "active" sınıfını kaldır (Altlarındaki mavi çizgiyi siler)
+            let tabBtns = document.getElementsByClassName("tab-btn");
+            for (let i = 0; i < tabBtns.length; i++) {
+                tabBtns[i].classList.remove("active");
+            }
+
+            // 3. Tıklanan sekmeyi göster ve butonuna "active" sınıfı ekle
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.classList.add("active");
+        }
+    </script>
+    <!-- 1. DÜZENLEME MODALI (Düzenle Butonu İçin) -->
+    <div id="edit-modal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:99999;">
+        
+        <!-- Modal İçeriği (Genişlik 400px olarak sabitlendi, ortalandı) -->
+        <div style="background:white; padding:30px; border-radius:10px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); position:relative;">
             
-            <form id="edit-form" style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-                <input type="hidden" id="edit-id"> <!-- ID'yi arka planda tutacağız -->
+            <span class="close-btn" onclick="document.getElementById('edit-modal').style.display='none'" style="cursor:pointer; position:absolute; top:15px; right:20px; font-size:24px; color:#6b7280;">&times;</span>
+            <h3 id="edit-modal-title" style="margin-top:0; margin-bottom:20px; color:#1f2937; font-size: 20px;">Kullanıcı Düzenle</h3>
+            
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
                 
-                <div>
-                    <label style="font-size: 14px; font-weight: bold;">Kullanıcı Adı:</label>
-                    <input type="text" id="edit-username" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <div style="margin-bottom:15px;">
+                    <label style="font-weight:600; font-size:14px; color:#374151;">Kullanıcı Adı</label>
+                    <input type="text" id="edit-username" required style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
                 </div>
                 
-                <div>
-                    <label style="font-size: 14px; font-weight: bold;">E-posta:</label>
-                    <input type="email" id="edit-email" required style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                <div style="margin-bottom:15px;">
+                    <label style="font-weight:600; font-size:14px; color:#374151;">E-posta</label>
+                    <input type="email" id="edit-email" required style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
                 </div>
                 
-                <div>
-                    <label style="font-size: 14px; font-weight: bold;">Rol:</label>
-                    <select id="edit-role" style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
-                        <option value="User">User</option>
+                <div style="margin-bottom:15px;">
+                    <label style="font-weight:600; font-size:14px; color:#374151;">Rol</label>
+                    <select id="edit-role" style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
                         <option value="Admin">Admin</option>
+                        <option value="User">User</option>
                     </select>
                 </div>
-                <!--  ŞİFRE ALANI -->
-                <div>
-                    <label style="font-size: 14px; font-weight: bold;">Yeni Şifre (Değiştirmeyecekseniz boş bırakın):</label>
-                    <input type="password" id="edit-password" placeholder="Yeni şifre belirle..." style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                
+                <div style="margin-bottom:25px;">
+                    <label style="font-weight:600; font-size:14px; color:#374151;">Yeni Şifre</label>
+                    <input type="password" id="edit-password" placeholder="Değiştirmek istemiyorsanız boş bırakın" style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
                 </div>
                 
-                <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button type="submit" class="btn-action" style="flex: 1; background-color: #007bff;">Kaydet</button>
-                    <button type="button" onclick="closeModal()" class="btn-action" style="flex: 1; background-color: #6c757d;">İptal</button>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" style="padding:10px 15px; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-weight:600;">İptal</button>
+                    <button type="submit" style="padding:10px 20px; background:#4f46e5; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Kaydet</button>
                 </div>
+            </form>
+            
+        </div>
+    </div>
+    </div>
+
+    <!-- 2. GÖREV ATA MODALI (Görev Ata Butonu İçin) -->
+    <div id="assign-task-modal" class="modal" style="display:none; position:fixed; top:20%; left:30%; width:40%; background:white; padding:20px; box-shadow:0 5px 15px rgba(0,0,0,0.3); border-radius:8px; z-index:1000;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('assign-task-modal').style.display='none'" style="cursor:pointer; float:right; font-size:20px;">&times;</span>
+            <h2>Görev Ata</h2>
+            <form id="assign-task-form">
+                <input type="hidden" id="assign-user-id">
+                <div style="margin-bottom:10px;">
+                    <label>Görev Başlığı</label><br>
+                    <input type="text" id="assign-title" required style="width:100%; padding:5px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Açıklama</label><br>
+                    <textarea id="assign-desc" required style="width:100%; padding:5px; height:80px;"></textarea>
+                </div>
+                <button type="submit" style="padding:8px 15px; background:#eab308; color:white; border:none; border-radius:4px; cursor:pointer;">Görev Oluştur</button>
             </form>
         </div>
     </div>
-    <!-- KULLANICI GÖREVLERİ MODALI (Başlangıçta Gizli) -->
-    <div id="tasks-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+
+    <!-- 3. GÖREVLERİ GÖRÜNTÜLE MODALI (Görevler Butonu İçin) -->
+    <div id="tasks-modal" class="modal" style="display:none; position:fixed; top:10%; left:25%; width:50%; max-height:80vh; overflow-y:auto; background:white; padding:20px; box-shadow:0 5px 15px rgba(0,0,0,0.3); border-radius:8px; z-index:1000;">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('tasks-modal').style.display='none'" style="cursor:pointer; float:right; font-size:20px;">&times;</span>
+            <h2 id="tasks-modal-title">Kullanıcı Görevleri</h2>
+            <div id="user-tasks-list" style="margin-top:15px;">
+                <!-- Görevler JavaScript ile buraya doldurulacak -->
+            </div>
+        </div>
+    </div>
+    <!-- 4. GÖREV YÖNETİMİ İÇİN CRUD (EKLE/GÜNCELLE) MODALI -->
+<div id="crud-task-modal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:99999;">
+    <div style="background:white; padding:25px; border-radius:8px; width:450px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+        <h3 id="crud-task-title" style="margin-top:0;">Görev Ekle / Düzenle</h3>
+        <form id="crud-task-form">
+            <input type="hidden" id="crud-task-id"> <!-- ID boşsa Yeni Kayıt, Doluysa Güncelleme -->
             
-            <h3 id="tasks-modal-title" style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; color: #003d82;">
-                Kullanıcı Görevleri
-            </h3>
-            
-            <!-- Görevlerin listeleneceği alan -->
-            <ul id="user-tasks-list" style="list-style-type: none; padding: 0; margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
-                <!-- JS ile görevler buraya eklenecek -->
-            </ul>
-            
-            <div style="margin-top: 20px; text-align: right;">
-                <button type="button" onclick="closeTasksModal()" class="btn-action" style="background-color: #6c757d; padding: 8px 16px;">Kapat</button>
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:bold; font-size:14px;">Görev Adı</label><br>
+                <input type="text" id="crud-task-name" required style="width:100%; padding:8px; margin-top:4px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;">
             </div>
             
-        </div>
-    </div>
-    <!-- KULLANICIYA GÖREV ATAMA MODALI (GİZLİ PENCERE) -->
-    <div id="assign-task-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000;">
-        
-        <!-- PENCERENİN İÇİ (Daha ferah olması için genişletildi) -->
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div style="margin-bottom:12px;">
+                <label style="font-weight:bold; font-size:14px;">Açıklama</label><br>
+                <textarea id="crud-task-desc" style="width:100%; padding:8px; margin-top:4px; height:80px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box;"></textarea>
+            </div>
             
-            <h3 id="assign-task-title" style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px; color: #5a4fcf;">
-                Görev Ata
-            </h3>
-            
-            <!-- YENİ TASARIMLI FORM -->
-            <form id="assign-task-form" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
-                <input type="hidden" id="assign-task-userid"> 
-                
-                <!-- Görev Başlığı -->
-                <div>
-                    <input type="text" id="assign-task-name" required placeholder="Görev başlığını yazın..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; font-family: inherit;">
-                </div>
-                
-                <!-- Görev Detayları -->
-                <div>
-                    <textarea id="assign-task-desc" placeholder="Görev detaylarını yazın (İsteğe bağlı)..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; min-height: 80px; resize: vertical; font-size: 14px; font-family: inherit;"></textarea>
-                </div>
-                
-                <!-- Öncelik Seçimi ve Butonların Yan Yana Dizilimi -->
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <select id="assign-task-priority" style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: white; font-size: 14px; cursor: pointer;">
-                        <option value="0">Düşük Öncelik</option>
-                        <option value="1" selected>Orta Öncelik</option>
-                        <option value="2">Yüksek Öncelik</option>
+            <div style="margin-bottom:12px; display: flex; gap: 15px;">
+                <div style="flex: 1;">
+                    <label style="font-weight:bold; font-size:14px;">Öncelik</label><br>
+                    <select id="crud-task-priority" style="width:100%; padding:8px; margin-top:4px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <option value="0">Düşük</option>
+                        <option value="1" selected>Orta</option>
+                        <option value="2">Yüksek</option>
                     </select>
-                    
-                    <button type="submit" style="flex: 2; background-color: #5a4fcf; color: white; padding: 12px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; font-size: 14px; transition: background 0.3s;">
-                        Görevi Ekle
-                    </button>
                 </div>
                 
-                <!-- İptal Butonu -->
-                <div style="text-align: right; margin-top: -5px;">
-                    <button type="button" onclick="closeAssignTaskModal()" style="background: none; border: none; color: #6c757d; cursor: pointer; text-decoration: underline; font-size: 13px;">İptal Et ve Kapat</button>
+                <!-- DURUM KUTUSU (Yeni görev eklerken gizlenecek, düzenlerken açılacak) -->
+                <div id="status-container" style="flex: 1;">
+                    <label style="font-weight:bold; font-size:14px;">Durum</label><br>
+                    <select id="crud-task-status" style="width:100%; padding:8px; margin-top:4px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                        <option value="false">Devam Ediyor</option>
+                        <option value="true">Tamamlandı</option>
+                    </select>
                 </div>
-            </form>
+            </div>
             
-        </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="document.getElementById('crud-task-modal').style.display='none'" style="padding:8px 15px; background:#64748b; color:white; border:none; border-radius:4px; cursor:pointer;">İptal</button>
+                <button type="submit" style="padding:8px 15px; background:#10b981; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold;">Kaydet</button>
+            </div>
+        </form>
     </div>
-    </div>
-    <script src="admin.js"></script>
+</div>
+</div>
+    <!-- Modern Uyarı Pencereleri için SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="api.js"></script>
+    <script src="admin.js?v=2"></script> 
+    
 </body>
 </html>
