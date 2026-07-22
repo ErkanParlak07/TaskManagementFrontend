@@ -1,0 +1,26 @@
+# Editör/IDE Klasörleri
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# İşletim Sistemi Dosyaları
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# İleride Kullanılabilecek Node/NPM Paketleri
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Çevresel Değişkenler (API anahtarları vb.)
+.env
+.env.local
