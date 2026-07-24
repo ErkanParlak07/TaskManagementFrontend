@@ -425,3 +425,125 @@ window.checkAdminAccess = function(event) {
     }
 };
 }
+// --- BİLDİRİM SİSTEMİ (DUMMY VERİLERLE TEST) ---
+
+// İleride bu veriler API'den gelecek (örn: fetch('/api/notifications'))
+let notifications = [
+    { id: 1, message: "Admin sana 'Veritabanı Yedeklemesi' görevini atadı.", time: "5 dakika önce", isRead: false },
+    { id: 2, message: "Admin 'Arayüz Tasarımı' görevini güncelledi.", time: "1 saat önce", isRead: false },
+    { id: 3, message: "Admin sana 'Toplantı Notları' görevini atadı.", time: "Dün", isRead: true }
+];
+
+// Sayfa yüklendiğinde bildirimleri ekrana bas
+document.addEventListener('DOMContentLoaded', () => {
+    renderNotifications();
+});
+
+function renderNotifications() {
+    const list = document.getElementById('notification-list');
+    const badge = document.getElementById('notification-count');
+    
+    list.innerHTML = '';
+    let unreadCount = 0;
+
+    notifications.forEach(notif => {
+        if (!notif.isRead) unreadCount++;
+
+        const li = document.createElement('li');
+        li.className = `notification-item ${notif.isRead ? '' : 'unread'}`;
+        li.innerHTML = `
+            <span>${notif.message}</span>
+            <span class="notification-time">${notif.time}</span>
+        `;
+        list.appendChild(li);
+    });
+
+    // Okunmamış bildirim varsa sayacı göster, yoksa gizle
+    if (unreadCount > 0) {
+        badge.innerText = unreadCount;
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+// Zile tıklandığında menüyü aç/kapat
+function toggleNotifications() {
+    const dropdown = document.getElementById('notification-dropdown');
+    dropdown.classList.toggle('show');
+
+    // Menü açıldığında bildirimleri "Okundu" olarak işaretle
+    if (dropdown.classList.contains('show')) {
+        notifications.forEach(n => n.isRead = true);
+        
+        // Sayacı gizlemek ve arka planları normale çevirmek için tekrar render et
+        // (İsteğe bağlı olarak bu işlemi bir süre gecikmeyle de yapabilirsin)
+        setTimeout(() => {
+            renderNotifications();
+        }, 1500); // 1.5 saniye sonra okundu işaretler
+    }
+}
+
+// Menü dışına tıklandığında açılır pencereyi kapat
+window.onclick = function(event) {
+    if (!event.target.closest('.notification-container')) {
+        const dropdown = document.getElementById('notification-dropdown');
+        if (dropdown && dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+        }
+    }
+
+    // --- SIGNALR GERÇEK ZAMANLI BİLDİRİM SİSTEMİ ---
+
+// 1. Bağlantıyı tanımla (Buradaki URL'yi kendi backend portuna göre güncellemelisin! Örn: https://localhost:7198)
+const API_BASE_URL = "http://localhost:5072"; 
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl(`${API_BASE_URL}/notificationHub`)
+    .build();
+
+// 2. Bağlantıyı başlat
+connection.start()
+    .then(() => console.log("SignalR'a başarıyla bağlanıldı! Canlı bildirimler aktif."))
+    .catch(err => console.error("SignalR Bağlantı Hatası: ", err));
+
+// 3. Backend'den gelen "ReceiveNotification" sinyalini dinle
+connection.on("ReceiveNotification", function (message) {
+    console.log("İŞTE YAKALADIM! Gelen mesaj:", message); // Konsola bunu yazdırıyor mu bakalım?
+    alert("Yeni Bildirim: " + message); // Tarayıcıda doğrudan bir uyarı penceresi açsın
+    
+    // Gelen mesajı arayüzdeki (UI) kırmızı zile ve listeye yansıtacak fonksiyonu çağır
+    showRealTimeNotification(message);
+});
+function showRealTimeNotification(message) {
+    const list = document.getElementById('notification-list');
+    const badge = document.getElementById('notification-count');
+    
+    if(!list || !badge) return; // Sayfada elementler yoksa hata verme
+
+    // O anki saati al (Örn: 14:30)
+    const now = new Date();
+    const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
+                       now.getMinutes().toString().padStart(2, '0');
+
+    // 1. Yeni bildirimi oluştur
+    const li = document.createElement('li');
+    li.className = 'notification-item unread';
+    li.innerHTML = `
+        <span>${message}</span>
+        <span class="notification-time">${timeString}</span>
+    `;
+
+    // 2. Listede en üste ekle (prepend)
+    list.prepend(li);
+
+    // 3. Kırmızı sayacı güncelle ve görünür yap
+    let currentCount = parseInt(badge.innerText) || 0;
+    currentCount++;
+    badge.innerText = currentCount;
+    badge.style.display = 'block';
+}
+
+
+
+
+}

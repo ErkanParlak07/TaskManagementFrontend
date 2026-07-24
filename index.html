@@ -14,8 +14,37 @@
             <h1 style="margin: 0;">Görev Yönetim Paneli</h1>
             
             <div class="header-actions" style="display: flex; gap: 10px;">
+                <!-- BİLDİRİM İKONU VE MENÜSÜ -->
+<div class="notification-container">
+    <button id="notification-bell" onclick="toggleNotifications()" class="bell-btn">
+        🔔
+       <span id="notification-count" class="notif-badge" style="display: none;">0</span>
+    </button>
+    
+    <!-- Bildirimler Açılır Menüsü (Dropdown) -->
+    <div id="notification-dropdown" class="dropdown-menu">
+        <div class="dropdown-header">Bildirimler</div>
+        <ul id="notification-list" class="notification-list">
+            <!-- Bildirimler JS ile buraya yüklenecek -->
+        </ul>
+    </div>
+</div>
                 <a href="#" onclick="checkAdminAccess(event)" id="admin-btn" class="btn-action" style="background-color: #ff9800; text-decoration: none; color: white; padding: 10px 15px; border-radius: 5px; font-weight: bold;">Yönetici Paneli</a>
-                <button id="logout-btn" class="btn-action" style="background-color: #dc3545; color: white; padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer;">Çıkış Yap</button>
+      <!-- Sağ Üst Profil Menüsü -->
+<div class="profile-menu-container" style="position: relative; display: inline-flex; align-items: center; gap: 10px;">
+    
+    <span id="header-username" onclick="window.toggleMenu(event)" style="font-weight: bold; color: #333; cursor: pointer;">Profilim</span>
+    
+    <img src="https://ui-avatars.com/api/?name=Erkan+Parlak&background=6c5ce7&color=fff" 
+         alt="Profil" id="profileIcon" onclick="window.toggleMenu(event)"
+         style="width: 45px; height: 45px; border-radius: 50%; cursor: pointer; object-fit: cover; border: 2px solid #6c5ce7; transition: 0.3s;">
+    
+    <!-- Tıklanınca Açılan Küçük Menü -->
+    <div id="profileDropdown" style="display: none; position: absolute; right: 0; top: 55px; background: white; box-shadow: 0 8px 16px rgba(0,0,0,0.15); border-radius: 8px; width: 180px; z-index: 100; overflow: hidden; border: 1px solid #eee;">
+        <a href="#" onclick="window.openProfile(event)" style="display: block; padding: 12px 16px; text-decoration: none; color: #333; font-weight: 500; border-bottom: 1px solid #f0f0f0;">Ayarlar ve Profil</a>
+        <a href="#" onclick="window.doLogout(event)" style="display: block; padding: 12px 16px; text-decoration: none; color: #dc3545; font-weight: 500;">Çıkış Yap</a>
+    </div>
+</div>
             </div>
         </header>
 
@@ -122,7 +151,260 @@
             }
         }
     </script>
+   <!-- PROFİL AYARLARI MODALI -->
+<div id="profile-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; width: 550px; max-width: 95%; border-radius: 12px; overflow: hidden; box-shadow: 0 5px 25px rgba(0,0,0,0.2);">
+        
+        <!-- Modal Başlığı -->
+        <div style="background: #6c5ce7; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 1.2rem;">Profil ve Hesap Ayarları</h2>
+            <!-- Çarpı butonu fonksiyonu window üzerinden çağırıldı -->
+            <span onclick="window.closeProfileModal()" style="cursor: pointer; font-size: 1.5rem; transition: 0.2s;">&times;</span>
+        </div>
+        
+        <!-- Modal İçeriği (Form) -->
+        <div style="padding: 20px; max-height: 75vh; overflow-y: auto;">
+            <form id="profileSettingsForm">
+                
+                <!-- BÖLÜM 1: KİŞİSEL BİLGİLER -->
+                <h3 style="border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; margin-top: 0; margin-bottom: 15px; color: #333; font-size: 1.1rem;">Kişisel Bilgiler</h3>
+                
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                    <!-- Tıklanabilir Fotoğraf Alanı -->
+                    <div style="position: relative; cursor: pointer;" onclick="document.getElementById('profile-photo-file').click()">
+                        <img src="https://ui-avatars.com/api/?name=EP&background=6c5ce7&color=fff" id="modal-avatar" alt="Avatar" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #6c5ce7;">
+                        <div style="position: absolute; bottom: 0; right: 0; background: #6c5ce7; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">📷</div>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 0.9rem; font-weight: bold; margin-bottom: 5px;">Profil Fotoğrafı</span>
+                        <span style="font-size: 0.8rem; color: #666;">Bilgisayardan seçmek için fotoğrafa tıklayın</span>
+                        <input type="file" id="profile-photo-file" accept="image/*" style="display: none;" onchange="window.previewProfilePhoto(event)">
+                    </div>
+                </div>
 
+                <!-- Silinen Ad Soyad ve Telefon Kısımları Geri Eklendi -->
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;">Ad Soyad</label>
+                        <input type="text" id="profile-fullname" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="Adınız Soyadınız">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;">Telefon Numarası</label>
+                        <input type="text" id="profile-phone" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="555 555 55 55">
+                    </div>
+                </div>
+
+                <!-- Silinen Biyografi Kısmı Geri Eklendi -->
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;">Biyografi</label>
+                    <textarea id="profile-bio" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="Kendinizden veya uzmanlık alanlarınızdan bahsedin..."></textarea>
+                </div>
+
+                <!-- BÖLÜM 2: HESAP VE GÜVENLİK -->
+                <h3 style="border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 15px; color: #333; font-size: 1.1rem; margin-top: 25px;">Hesap ve Güvenlik Ayarları</h3>
+                
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;">Kullanıcı Adı</label>
+                        <input type="text" id="profile-username" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;">E-posta Adresi</label>
+                        <input type="email" id="profile-email" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem; color: #dc3545;">Şifre Değiştirme (Opsiyonel)</label>
+                    <input type="password" id="profile-new-password" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" placeholder="Şifrenizi değiştirmek istemiyorsanız boş bırakın">
+                </div>
+
+                <button type="submit" style="width: 100%; padding: 12px; background: #6c5ce7; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; font-weight: bold; transition: 0.3s;">Değişiklikleri Kaydet</button>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    // 1. Sağ üst menüyü açıp kapatan kod
+    window.toggleMenu = function(e) {
+        e.stopPropagation(); 
+        const drop = document.getElementById('profileDropdown');
+        if(drop) drop.style.display = (drop.style.display === 'block') ? 'none' : 'block';
+    };
+
+    // 2. Boşluğa tıklayınca menüyü kapatan kod
+    document.addEventListener('click', function() {
+        const drop = document.getElementById('profileDropdown');
+        if(drop && drop.style.display === 'block') drop.style.display = 'none';
+    });
+
+    // 3. Ayarlar ve Profil penceresini (Modal) açan ve Verileri Dolduran kod
+window.openProfile = async function(e) {
+    if(e) e.preventDefault();
+    
+    // Küçük dropdown menüyü kapat
+    const drop = document.getElementById('profileDropdown');
+    if(drop) drop.style.display = 'none';
+
+    const token = localStorage.getItem('jwtToken');
+    
+    // YENİ EKLENEN KISIM: Modalı açmadan önce C# API'den verileri çekiyoruz
+    try {
+        const response = await fetch('http://localhost:5072/api/Auth/me', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const userData = await response.json();
+            
+            // C# API'den gelen verileri HTML kutucuklarına dolduruyoruz
+            // (Eğer veri boşsa null yerine '' yani boş metin atıyoruz ki hata vermesin)
+            document.getElementById('profile-username').value = userData.username || '';
+            document.getElementById('profile-email').value = userData.email || '';
+            document.getElementById('profile-fullname').value = userData.fullName || '';
+            document.getElementById('profile-phone').value = userData.phoneNumber || '';
+            document.getElementById('profile-bio').value = userData.biography || '';
+            
+            // Eğer veritabanında kullanıcının yüklediği bir resim URL'si varsa onu göster
+            if (userData.profilePhotoPath) {
+                document.getElementById('modal-avatar').src = userData.profilePhotoPath;
+            }
+        }
+    } catch (err) {
+        console.error("Kullanıcı bilgileri API'den çekilemedi:", err);
+    }
+
+    // Bilgileri doldurduktan sonra Modalı (Pencereyi) ekranda göster
+    const modal = document.getElementById('profile-modal');
+    if(modal) modal.style.display = 'flex';
+};
+
+    // 4. Çarpı İşareti İçin Modalı Kapatan Kod (EKLENDİ)
+    window.closeProfileModal = function() {
+        const modal = document.getElementById('profile-modal');
+        if(modal) modal.style.display = 'none';
+    };
+
+    // 5. Çıkış yapma kodu
+    window.doLogout = function(e) {
+        if(e) e.preventDefault();
+        localStorage.removeItem('jwtToken');
+        localStorage.clear();
+        window.location.href = 'login.html';
+    };
+
+    // 6. Seçilen fotoğrafı anında yuvarlak çemberde gösterme
+    window.previewProfilePhoto = function(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('modal-avatar').src = e.target.result;
+            }
+            reader.readAsDataURL(file); 
+        }
+    };
+
+    // 7. Formu API'ye Gönderme İşlemi (FormData)
+    document.getElementById('profileSettingsForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const token = localStorage.getItem('jwtToken');
+        const formData = new FormData();
+        
+        // Hata önleyici yardımcı fonksiyon: Kutu yoksa boş değer alır
+        const getVal = (id) => document.getElementById(id) ? document.getElementById(id).value : '';
+
+        formData.append('Username', getVal('profile-username'));
+        formData.append('Email', getVal('profile-email'));
+        formData.append('FullName', getVal('profile-fullname'));
+        formData.append('PhoneNumber', getVal('profile-phone'));
+        formData.append('Biography', getVal('profile-bio'));
+
+        const newPassword = getVal('profile-new-password');
+        if(newPassword) formData.append('Password', newPassword);
+
+        const fileInput = document.getElementById('profile-photo-file');
+        if(fileInput && fileInput.files[0]) {
+            formData.append('ProfilePhoto', fileInput.files[0]);
+        }
+
+        try {
+            // C# API'nin adresi (Kendi projenin yoluna göre kontrol edebilirsin)
+            const response = await fetch('http://localhost:5072/api/Auth/update-profile', {
+                method: 'PUT', 
+                headers: { 'Authorization': `Bearer ${token}` }, // Form-data için Content-Type eklenmez
+                body: formData
+            });
+
+            if (response.ok) {
+                // Eğer modern bildirim toast sistemin varsa o çalışır, yoksa tarayıcı uyarısı verir
+                if (typeof showToast === 'function') {
+                    showToast("Profil başarıyla güncellendi!", "success");
+                } else {
+                    alert("Profil başarıyla güncellendi!");
+                }
+                
+                // Sağ üstteki resmi de anında yeni resimle değiştir
+                if(fileInput && fileInput.files[0]) {
+                    const icon = document.getElementById('profileIcon');
+                    if (icon) icon.src = document.getElementById('modal-avatar').src;
+                }
+                
+                window.closeProfileModal(); // Formu kapat
+            } else {
+                const errorText = await response.text();
+                alert("Güncelleme başarısız: " + errorText);
+            }
+        } catch (err) {
+            alert("Sunucuyla bağlantı kurulamadı.");
+            console.error(err);
+        }
+        
+    });
+    // Sayfa açıldığında profil resmini ve ismini sağ üste yansıtan GARANTİ kod
+async function loadTopRightProfile() {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return; // Token yoksa (giriş yapılmamışsa) işlemi durdur
+
+    try {
+        const response = await fetch('http://localhost:5072/api/Auth/me', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            // 1. Fotoğrafı Güncelle (C# API'den gelen ismin büyük/küçük harf ihtimallerini garantiye alıyoruz)
+            const photoUrl = data.profilePhotoPath || data.ProfilePhotoPath;
+            if (photoUrl) {
+                const icon = document.getElementById('profileIcon');
+                if (icon) {
+                    icon.src = photoUrl;
+                }
+            }
+
+            // 2. "Profilim" yazısını Gerçek Ad-Soyad ile değiştir (Harika bir detay!)
+            const displayName = data.fullName || data.FullName || data.username || data.Username;
+            if (displayName) {
+                const nameSpan = document.getElementById('header-username');
+                if (nameSpan) {
+                    nameSpan.innerText = displayName;
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Sağ üst profil bilgileri çekilirken hata oluştu:", err);
+    }
+}
+
+// Event (olay) beklemek yok! Kod okunduğu an doğrudan çalıştırıyoruz:
+loadTopRightProfile();
+</script>
+
+    <!-- SignalR Kütüphanesi -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
     <!-- Modern Uyarı Pencereleri için SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="api.js"></script>

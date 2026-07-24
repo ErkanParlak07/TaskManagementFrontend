@@ -1,3 +1,6 @@
+
+let currentPage = 1;
+const rowsPerPage = 5; // Sayfa başına kaç kişi gösterileceğini burası belirliyor
 const API_ADMIN_URL = 'http://localhost:5072/api/admin';
 let usersData = []; // Veritabanından gelen tüm listeyi burada tutacağız
 // MODERN BİLDİRİM GÖSTERİCİ FONKSİYON
@@ -44,10 +47,23 @@ async function loadUsers() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (response.ok) {
-            usersData = await response.json();
-            renderTable(); // Veri gelince tabloyu çiz
-        } else {
+       if (response.ok) {
+            usersData = await response.json(); // Gerçek veriler API'den geldi
+            
+            // --- DUMMY VERİ TEST ALANI (Sayfalamayı test etmek için eklendi) ---
+            for (let i = 100; i < 115; i++) {
+                usersData.push({
+                    id: i,
+                    username: `TestKullanici_${i}`,
+                    role: i % 3 === 0 ? 'Admin' : 'User', // Rastgele rol dağıtımı
+                    isDeleted: false
+                });
+            }
+            // ------------------------------------------------------------------
+
+            currentPage = 1; 
+            renderTable(); // Tabloyu 15 yeni sahte veriyle birlikte çiz
+        }else {
             showToast("Erişim yetkiniz yok!", "error");
             window.location.href = 'index.html';
         }
@@ -56,42 +72,53 @@ async function loadUsers() {
     }
 }
 
-// Tabloyu ekrana basan fonksiyon
+
+// Tabloyu ekrana basan fonksiyon (Sayfalama entegre edildi)
 function renderTable() {
     const tbody = document.getElementById('admin-user-list');
     if (!tbody) return;
     tbody.innerHTML = '';
-    
+
     // Checkbox işaretli mi? (true/false)
     const showPassive = document.getElementById('show-inactive')?.checked || false;
-
+    
     // Sadece checkbox'ın durumuna uyanları filtrele
     const filteredUsers = usersData.filter(u => u.isDeleted === showPassive);
 
-    filteredUsers.forEach(user => {
+    // --- SAYFALAMA HESAPLAMALARI ---
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    
+    // Tüm filtrelenmiş listeyi değil, sadece o sayfaya ait olan kısmı al (slice)
+    const paginatedUsers = filteredUsers.slice(startIndex, endIndex);
+
+    // filteredUsers YERİNE paginatedUsers üzerinde dönüyoruz
+    paginatedUsers.forEach(user => {
         const row = document.createElement('tr');
         row.style.borderBottom = "1px solid #ddd"; // Satır altı çizgisi
-        
+
         let actionButton = '';
         if (user.isDeleted) {
             actionButton = `<button type="button" onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #28a745;">Aktif Et</button>`;
         } else {
-            actionButton = `<button type="button" onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #d9534f;">Pasif Et</button>`;
+            actionButton = `<button type="button" onclick="toggleUser(${user.id})" class="btn-action" style="background-color: #dc3545;">Pasif Et</button>`;
         }
 
         row.innerHTML = `
             <td style="padding: 10px;">${user.id}</td>
             <td style="padding: 10px; font-weight: bold;">${user.username}</td>
             <td style="padding: 10px;">${user.role}</td>
-            <td style="padding: 10px; display: flex; gap: 8px; align-items: center;">
-                
-               
-                <button type="button" onclick="openEditModal(${user.id})" class="btn-action" style="background-color: #007bff;">Düzenle</button>
+            <td style="padding: 10px; display: flex; gap: 8px; align-items: center; justify-content: flex-end;">
+                <button type="button" class="btn-action" onclick="openEditModal(${user.id})" style="background-color: #007bff;">Düzenle</button>
                 ${actionButton}
             </td>
         `;
-        tbody.appendChild(row);
+        
+        tbody.appendChild(row); // Satırı tabloya ekle
     });
+
+    // Tabloyu çizdikten sonra altındaki sayfa numarası butonlarını oluştur
+    setupPaginationButtons(filteredUsers.length);
 }
 
 // Butona tıklandığında durumu değiştiren fonksiyon
@@ -111,23 +138,29 @@ async function toggleUser(id) {
 }
 // 1. MODAL AÇMA İŞLEMİ (Verileri forma doldurur)
 function openEditModal(id) {
-    // Görünümü kesin olarak Kullanıcı Yönetimi sekmesinde sabitle
     document.getElementById('UserManagement').style.display = 'block';
     document.getElementById('AdminDashboard').style.display = 'none';
-    document.getElementsByClassName('tab-btn')[0].classList.add('active'); // Kullanıcı Yönetimi butonunu aktif yap
+    document.getElementsByClassName('tab-btn')[0].classList.add('active'); 
     document.getElementsByClassName('tab-btn')[1].classList.remove('active');
 
     const user = usersData ? usersData.find(u => u.id === id) : null;
     if (!user) return;
 
-    // Formdaki kutucukları kullanıcının mevcut bilgileriyle doldur
+    // Eski Alanlar
     document.getElementById('edit-id').value = user.id;
-    document.getElementById('edit-username').value = user.username;
+    document.getElementById('edit-username').value = user.username || '';
     document.getElementById('edit-email').value = user.email || ''; 
-    document.getElementById('edit-role').value = user.role;
+    document.getElementById('edit-role').value = user.role || 'User';
     document.getElementById('edit-password').value = '';
 
-    // HATA ÇÖZÜLDÜ: 'modal' değişkeni yerine doğrudan ID kullanıyoruz
+    // Yeni Alanlar (Veritabanından geliyorsa doldur, yoksa boş bırak)
+    if(document.getElementById('edit-fullname')) document.getElementById('edit-fullname').value = user.fullName || user.FullName || '';
+    if(document.getElementById('edit-phone')) document.getElementById('edit-phone').value = user.phoneNumber || user.PhoneNumber || '';
+    if(document.getElementById('edit-bio')) document.getElementById('edit-bio').value = user.biography || user.Biography || '';
+    
+    // Güvenlik gereği dosya seçicinin içi programatik olarak doldurulamaz, sıfırlıyoruz.
+    if(document.getElementById('edit-photo-file')) document.getElementById('edit-photo-file').value = ''; 
+
     document.getElementById('edit-modal').style.display = 'flex';
 }
 
@@ -136,41 +169,58 @@ function closeModal() {
     document.getElementById('edit-modal').style.display = 'none';
 }
 
-// FORM GÖNDERME İŞLEMİ (Veritabanına kaydetme)
+// 2. FORM GÖNDERME İŞLEMİ (FormData Formatında)
 document.getElementById('edit-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Sayfanın yenilenmesini engelle
+    e.preventDefault(); 
     
     const id = document.getElementById('edit-id').value;
-    const updatedData = {
-        username: document.getElementById('edit-username').value,
-        email: document.getElementById('edit-email').value,
-        role: document.getElementById('edit-role').value,
-        password: document.getElementById('edit-password').value
-    };
-
     const token = localStorage.getItem('jwtToken');
     
+    // Fotoğraf yükleyebilmek için JSON yerine FormData kullanıyoruz
+    const formData = new FormData();
+    formData.append("Username", document.getElementById('edit-username').value);
+    formData.append("Email", document.getElementById('edit-email').value);
+    formData.append("Role", document.getElementById('edit-role').value);
+    
+    // Yeni eklediğimiz metin alanları
+    formData.append("FullName", document.getElementById('edit-fullname').value);
+    formData.append("PhoneNumber", document.getElementById('edit-phone').value);
+    formData.append("Biography", document.getElementById('edit-bio').value);
+
+    // Şifre girilmişse ekle
+    const newPassword = document.getElementById('edit-password').value;
+    if (newPassword) {
+        formData.append("Password", newPassword);
+    }
+
+    // Dosya seçilmişse ekle
+    const photoFile = document.getElementById('edit-photo-file').files[0];
+    if (photoFile) {
+        formData.append("ProfilePhoto", photoFile);
+    }
+
     try {
         const response = await fetch(`${API_ADMIN_URL}/update-user/${id}`, {
             method: 'PUT',
             headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json' // API'ye JSON gönderdiğimizi söylüyoruz
+                'Authorization': `Bearer ${token}`
+                // DİKKAT: FormData kullandığımız için 'Content-Type': 'application/json' satırını sildik!
             },
-            body: JSON.stringify(updatedData)
+            body: formData
         });
 
         if (response.ok) {
-            closeModal(); // Modalı kapat
-            await loadUsers(); // Tabloyu yeni verilerle tekrar çiz
-            showToast("Kullanıcı bilgileri başarıyla güncellendi!", "success");
+            closeModal(); 
+            await loadUsers(); // Tabloyu yeni verilerle çiz
+            showToast("Kullanıcı başarıyla güncellendi!", "success");
         } else {
-            showToast("Güncelleme işlemi başarısız oldu.", "error");
+            const errText = await response.text();
+            showToast("Hata: " + errText, "error");
         }
     } catch (err) {
-        console.error("Hata:", err);
-    }
-});
+        console.error("Bağlantı Hatası:", err);
+        showToast("Sunucuyla bağlantı kurulamadı.", "error");
+    }});
 
 
 
@@ -182,7 +232,18 @@ function closeAssignTaskModal() {
 document.getElementById('assign-task-form')?.addEventListener('submit', async (e) => {
     e.preventDefault(); 
     
-    const userId = document.getElementById('assign-task-userid').value;
+    // ==========================================
+    // İŞTE BÜYÜK DÜZELTME BURADA!
+    // Gizli ve boş gelen input yerine, Görev Yönetimi sekmesinde
+    // zaten seçmiş olduğumuz dropdown'un (açılır menünün) değerini alıyoruz!
+    const userId = document.getElementById('task-user-select').value;
+    // ==========================================
+
+    if (!userId) {
+        showToast("Lütfen görev atamak için üst menüden bir kullanıcı seçin.", "error");
+        return;
+    }
+
     const taskTitle = document.getElementById('assign-task-name').value;
     const taskDesc = document.getElementById('assign-task-desc').value;
     const taskPriority = parseInt(document.getElementById('assign-task-priority').value);
@@ -196,7 +257,6 @@ document.getElementById('assign-task-form')?.addEventListener('submit', async (e
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json' 
             },
-            // Güncellenen DTO'ya uygun olarak gönderiyoruz:
             body: JSON.stringify({ 
                 title: taskTitle,
                 description: taskDesc,
@@ -207,6 +267,8 @@ document.getElementById('assign-task-form')?.addEventListener('submit', async (e
         if (response.ok) {
             showToast("Görev başarıyla atandı!", "success");
             closeAssignTaskModal();
+            document.getElementById('assign-task-form').reset(); // Formu temizle
+            await loadTasksForSelectedUser(); // Eklenen görevi anında tabloya yansıt
         } else {
             showToast("Görev atanırken bir hata oluştu.", "error");
         }
@@ -214,9 +276,7 @@ document.getElementById('assign-task-form')?.addEventListener('submit', async (e
         console.error("Hata:", err);
         showToast("Sunucuya bağlanılamadı.", "error");
     }
-   
-
-}); 
+});
 
 // Güvenlik loglarını API'den çeken ana fonksiyon (En Güncel Hata Avcısı Versiyonu)
 async function loadSecurityLogs() {
@@ -236,6 +296,7 @@ async function loadSecurityLogs() {
             const data = await response.json();
             renderLogsToTable(data.recentLogins, 'recent-logins-list', 'status-success');
             renderLogsToTable(data.failedLogins, 'failed-logins-list', 'status-danger');
+            
         } else {
             const errorText = await response.text();
             const errMsg = `<tr><td colspan="3" style="text-align: center; color: #dc2626; font-weight: bold;">Backend Hatası: ${response.status} <br> C# API bu isteği reddetti.</td></tr>`;
@@ -496,6 +557,52 @@ async function deleteTask(taskId) {
     } catch (err) {
         Swal.fire('Bağlantı Hatası!', "Sunucu ile iletişim kurulamadı.", 'error');
     }
+}
+// Sayfalama butonlarını dinamik oluşturan yeni fonksiyon
+function setupPaginationButtons(totalItems) {
+    const paginationContainer = document.getElementById('users-pagination');
+    if (!paginationContainer) return; // HTML'de div unutulmuşsa hata vermesin
+    
+    paginationContainer.innerHTML = '';
+
+    // Toplam kaç sayfa olacağını hesapla
+    const totalPages = Math.ceil(totalItems / rowsPerPage);
+
+    if (totalPages <= 1) return; // Tek sayfa varsa butonları göstermeye gerek yok
+
+    // "Önceki" Butonu
+    const prevBtn = document.createElement('button');
+    prevBtn.innerText = 'Önceki';
+    prevBtn.className = 'page-btn';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => { 
+        currentPage--; 
+        renderTable(); 
+    };
+    paginationContainer.appendChild(prevBtn);
+
+    // Numaralı Butonlar (1, 2, 3...)
+    for (let i = 1; i <= totalPages; i++) {
+        const btn = document.createElement('button');
+        btn.innerText = i;
+        btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
+        btn.onclick = () => { 
+            currentPage = i; 
+            renderTable(); 
+        };
+        paginationContainer.appendChild(btn);
+    }
+
+    // "Sonraki" Butonu
+    const nextBtn = document.createElement('button');
+    nextBtn.innerText = 'Sonraki';
+    nextBtn.className = 'page-btn';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => { 
+        currentPage++; 
+        renderTable(); 
+    };
+    paginationContainer.appendChild(nextBtn);
 }
 
 

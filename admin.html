@@ -110,13 +110,16 @@
                         <th style="padding: 10px;">ID</th>
                         <th>Kullanıcı Adı</th>
                         <th>Rol</th>
-                        <th>İşlemler</th>
+                        
+                        <th style="text-align: right; padding-right: 75px;">İşlemler</th>
+                        
                     </tr>
                 </thead>
                 <tbody id="admin-user-list">
                     <!-- Dinamik Kullanıcı Listesi Buraya Gelecek -->
                 </tbody>
             </table>
+            <div id="users-pagination" class="pagination-container"></div>
         </div>
 
         <!-- 2. SEKME İÇERİĞİ: GÜVENLİK DASHBOARD -->
@@ -156,6 +159,7 @@
                  <tr><td colspan="3" style="text-align: center;">Yükleniyor...</td></tr>
             </tbody>
         </table>
+        <div id="logs-pagination" class="pagination-container"></div>
     </div>
 </div>
 </div>
@@ -187,6 +191,7 @@
             <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 30px;">Kayıtları görmek için lütfen üstten kullanıcı seçin.</td></tr>
         </tbody>
     </table>
+    <div id="tasks-pagination" class="pagination-container"></div>
 </div>
 
     <!-- Sekme Geçişlerini Sağlayan JavaScript Code -->
@@ -209,49 +214,83 @@
             evt.currentTarget.classList.add("active");
         }
     </script>
-    <!-- 1. DÜZENLEME MODALI (Düzenle Butonu İçin) -->
-    <div id="edit-modal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:99999;">
+    <!-- KULLANICI DÜZENLE MODALI (YATAY VE MODERN TASARIM) -->
+<div id="edit-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    
+    <!-- Genişlik 400px'den 750px'e çıkarıldı -->
+    <div style="background: white; width: 750px; max-width: 95%; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
         
-        <!-- Modal İçeriği (Genişlik 400px olarak sabitlendi, ortalandı) -->
-        <div style="background:white; padding:30px; border-radius:10px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); position:relative;">
-            
-            <span class="close-btn" onclick="document.getElementById('edit-modal').style.display='none'" style="cursor:pointer; position:absolute; top:15px; right:20px; font-size:24px; color:#6b7280;">&times;</span>
-            <h3 id="edit-modal-title" style="margin-top:0; margin-bottom:20px; color:#1f2937; font-size: 20px;">Kullanıcı Düzenle</h3>
-            
-            <form id="edit-form">
-                <input type="hidden" id="edit-id">
+        <!-- Modal Başlığı -->
+        <div style="background: #6c5ce7; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="margin: 0; font-size: 1.25rem;">Kullanıcı Düzenle</h2>
+            <span onclick="closeModal()" style="cursor: pointer; font-size: 1.5rem; transition: 0.2s;">&times;</span>
+        </div>
+        
+        <!-- Modal İçeriği (Form) -->
+        <form id="edit-form" style="padding: 25px;">
+            <!-- Arka planda çalışacak gizli ID -->
+            <input type="hidden" id="edit-id">
+
+            <!-- 2 SÜTUNLU YATAY IZGARA (GRID) SİSTEMİ -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px 25px;">
                 
-                <div style="margin-bottom:15px;">
-                    <label style="font-weight:600; font-size:14px; color:#374151;">Kullanıcı Adı</label>
-                    <input type="text" id="edit-username" required style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
+                <!-- Sol Sütun / Sağ Sütun Karışık Dizilim -->
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Kullanıcı Adı</label>
+                    <input type="text" id="edit-username" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px;">
                 </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="font-weight:600; font-size:14px; color:#374151;">E-posta</label>
-                    <input type="email" id="edit-email" required style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
+
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">E-posta Adresi</label>
+                    <input type="email" id="edit-email" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px;">
                 </div>
-                
-                <div style="margin-bottom:15px;">
-                    <label style="font-weight:600; font-size:14px; color:#374151;">Rol</label>
-                    <select id="edit-role" style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
-                        <option value="Admin">Admin</option>
+
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Ad Soyad</label>
+                    <input type="text" id="edit-fullname" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px;">
+                </div>
+
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Telefon Numarası</label>
+                    <input type="text" id="edit-phone" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px;">
+                </div>
+
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Sistem Rolü</label>
+                    <select id="edit-role" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px; background: white;">
                         <option value="User">User</option>
+                        <option value="Admin">Admin</option>
                     </select>
                 </div>
-                
-                <div style="margin-bottom:25px;">
-                    <label style="font-weight:600; font-size:14px; color:#374151;">Yeni Şifre</label>
-                    <input type="password" id="edit-password" placeholder="Değiştirmek istemiyorsanız boş bırakın" style="width:100%; padding:10px; margin-top:5px; border:1px solid #d1d5db; border-radius:6px; box-sizing:border-box;">
+
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Yeni Şifre <span style="color:#ef4444; font-size:11px;">(Opsiyonel)</span></label>
+                    <input type="password" id="edit-password" placeholder="Değiştirmeyecekseniz boş bırakın" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px;">
                 </div>
-                
-                <div style="display:flex; justify-content:flex-end; gap:10px;">
-                    <button type="button" onclick="document.getElementById('edit-modal').style.display='none'" style="padding:10px 15px; background:#f3f4f6; color:#374151; border:1px solid #d1d5db; border-radius:6px; cursor:pointer; font-weight:600;">İptal</button>
-                    <button type="submit" style="padding:10px 20px; background:#4f46e5; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Kaydet</button>
+
+                <!-- Biyografi (İki sütunu birden kaplaması için grid-column: span 2) -->
+                <div style="display: flex; flex-direction: column; grid-column: span 2;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Biyografi</label>
+                    <textarea id="edit-bio" rows="2" style="padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; outline: none; font-size: 14px; resize: none;"></textarea>
                 </div>
-            </form>
+
+                <!-- Profil Fotoğrafı (İki sütunu birden kaplar) -->
+                <div style="display: flex; flex-direction: column; grid-column: span 2;">
+                    <label style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #475569;">Profil Fotoğrafı Seç</label>
+                    <input type="file" id="edit-photo-file" accept="image/*" style="padding: 8px; border: 1px dashed #cbd5e1; border-radius: 6px; background: #f8fafc; outline: none; font-size: 14px; cursor: pointer;">
+                </div>
+
+            </div>
+
+            <!-- Aksiyon Butonları -->
+            <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 25px; padding-top: 20px; border-top: 1px solid #f1f5f9;">
+                <button type="button" onclick="closeModal()" style="padding: 10px 24px; background: #f1f5f9; color: #475569; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">İptal</button>
+                <button type="submit" style="padding: 10px 24px; background: #6c5ce7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 4px 6px rgba(108, 92, 231, 0.2);">Değişiklikleri Kaydet</button>
+            </div>
             
-        </div>
+        </form>
     </div>
+</div>
     </div>
 
     <!-- 2. GÖREV ATA MODALI (Görev Ata Butonu İçin) -->

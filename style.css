@@ -22,22 +22,22 @@
 }
 
 body {
-    background-color: var(--bg-color);
-    color: var(--text-main);
-    display: flex;
-    justify-content: center;
-    padding: 3rem 1rem;
+    margin: 0;
+    padding: 0;
+    background-color: #ffffff; /* Arka planı tamamen beyaz yapıyoruz */
     min-height: 100vh;
 }
 
 /* --- 3. Ana Taşıyıcı Kutu (Konteyner) --- */
 .container {
-    background-color: var(--card-bg);
+    max-width: 100% !important; /* Daha önceki 800px, 1200px gibi sınırları ezer */
     width: 100%;
-    max-width: 800px;
-    padding: 2.5rem;
-    border-radius: var(--radius);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05); /* Yumuşak derinlik gölgesi */
+    min-height: 100vh; /* Ekranın dikeyde tamamını kaplamasını sağlar */
+    margin: 0 !important; /* Kutuyu ortalamak için verilen boşlukları siler */
+    border-radius: 0 !important; /* Kenarlardaki yuvarlaklığı kaldırır */
+    box-shadow: none !important; /* Tam ekran olduğu için gölgeye gerek kalmaz */
+    padding: 30px 50px; /* İçeriklerin kenarlara yapışmaması için iç boşluk bırakıyoruz (kendine göre ayarlayabilirsin) */
+    box-sizing: border-box;
 }
 
 h1 {
@@ -442,4 +442,146 @@ hr {
     align-items: center; /* Metni dikeyde ortalar */
     justify-content: center; /* Metni yatayda ortalar */
     margin-bottom: 10px; /* Rakamla arasına biraz nefes alma boşluğu bırakır */
+}
+/* Sayfalama Konteyneri */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    padding-bottom: 20px;
+}
+
+/* Sayfalama Butonları */
+.page-btn {
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    color: #334155;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.page-btn:hover {
+    background-color: #f1f5f9;
+}
+
+/* Aktif (Bulunulan) Sayfa Butonu */
+.page-btn.active {
+    background-color: #4f46e5; /* Yönetici Paneli mavisi */
+    color: #ffffff;
+    border-color: #4f46e5;
+}
+
+.page-btn:disabled {
+    background-color: #f8fafc;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+/* Bildirim Konteyneri */
+.notification-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Zil Butonu */
+.bell-btn {
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    position: relative;
+    padding: 5px;
+    transition: transform 0.2s ease;
+}
+
+.bell-btn:hover {
+    transform: scale(1.1);
+}
+
+/* Kırmızı Sayac (Badge) */
+.notif-badge {
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    background-color: #ef4444; /* Kırmızı */
+    color: white;
+    border-radius: 50%;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: bold;
+    border: 2px solid white;
+}
+
+/* Açılır Menü (Dropdown) */
+.dropdown-menu {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    width: 320px;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease-in-out;
+}
+
+/* Menü Açıkken */
+.dropdown-menu.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-header {
+    background-color: #f8fafc;
+    padding: 12px;
+    font-weight: 600;
+    color: #334155;
+    border-bottom: 1px solid #e2e8f0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    text-align: left;
+}
+
+.notification-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+/* Tekil Bildirim Satırı */
+.notification-item {
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+    color: #475569;
+    cursor: pointer;
+}
+
+.notification-item:hover {
+    background-color: #f8fafc;
+}
+
+.notification-item.unread {
+    background-color: #eff6ff; /* Okunmamışlar için açık mavi arka plan */
+    font-weight: 500;
+}
+
+.notification-time {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 5px;
 }
