@@ -80,6 +80,12 @@
                                 <option value="1" selected>Orta Öncelik</option>
                                 <option value="2">Yüksek Öncelik</option>
                             </select>
+                            <!-- Yeni görev ekleme formunun uygun bir yerine bunu ekle -->
+<div class="form-group" style="margin-bottom: 15px;">
+    <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #475569;">Son Tarih</label>
+    <input type="date" id="task-duedate" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+</div>
+
                             <button type="submit" id="submit-btn">Görevi Ekle</button>
                         </div>
                     </form>
@@ -103,6 +109,11 @@
                     <div id="task-list" class="task-list">
                         <p class="loading-text">Görevler yükleniyor...</p>
                     </div>
+                    <!-- Mevcut Görevler listesinin altına ekleyebilirsin -->
+<div class="calendar-container" style="margin-top: 40px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-bottom: 20px; color: #1e293b;">📅 Görev Takvimi</h3>
+    <div id="calendar"></div>
+</div>
                 </section>
             </div>
 
@@ -413,8 +424,10 @@ async function loadTopRightProfile() {
 loadTopRightProfile();
 </script>
 
-    <!-- SignalR Kütüphanesi -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <!-- Excel Çıktısı İçin SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- FullCalendar Global CDN -->
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
     <!-- Modern Uyarı Pencereleri için SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="api.js"></script>

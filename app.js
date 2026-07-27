@@ -1,39 +1,31 @@
+// --- GLOBAL DEĞİŞKENLER (Dosyanın en üstünde mutlaka olmalıdır) ---
+let currentPage = 1;
+const itemsPerPage = 5; 
+let allTasks = []; 
+let isEditing = false;
+let currentEditId = null;
+let currentEditStatus = 0;
+let calendar = null;
 
-// MODERN BİLDİRİM GÖSTERİCİ FONKSİYON
+// --- MODERN BİLDİRİM GÖSTERİCİ FONKSİYON ---
 function showToast(message, type = 'error') {
-    // 1. Bildirim kutusunu yarat
     const toast = document.createElement('div');
     toast.className = `modern-toast toast-${type}`;
     toast.innerText = message;
     
-    // 2. Sayfaya ekle
     document.body.appendChild(toast);
-
-    // 3. Görünür yap (Animasyonu başlat)
     setTimeout(() => toast.classList.add('show'), 10);
 
-    // 4. 3 saniye sonra ekrandan sil
     setTimeout(() => {
         toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 300); // Animasyon bitince HTML'den de temizle
+        setTimeout(() => toast.remove(), 300);
     }, 3000);
 }
+
 // --- GÜVENLİK DUVARI (Route Guard) ---
-// Eğer tarayıcı kasasında (localStorage) token yoksa, hiç beklemeden login sayfasına at!
 if (!localStorage.getItem('jwtToken')) {
     window.location.href = 'login.html';
 }
-
-// Çıkış Yap Butonu İşlemi
-document.addEventListener('DOMContentLoaded', () => {
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('jwtToken'); // Kasadaki token'ı sil
-            window.location.href = 'login.html'; // Giriş sayfasına yönlendir
-        });
-    }
-});
 
 // --- 1. DOM (HTML) Elemanlarını Seçme ---
 const taskForm = document.getElementById('task-form');
@@ -43,14 +35,45 @@ const taskPriorityInput = document.getElementById('task-priority');
 const taskListContainer = document.getElementById('task-list');
 const submitBtn = document.getElementById('submit-btn');
 
-// İstatistik Panosu (Dashboard) Elemanları
 const statTotal = document.getElementById('stat-total');
 const statCompleted = document.getElementById('stat-completed');
 const statPending = document.getElementById('stat-pending');
 
-// Arama ve Filtreleme Elemanları
 const searchInput = document.getElementById('search-input');
 const statusFilter = document.getElementById('status-filter');
+
+// --- 2. Sayfa Yüklendiğinde Başlat ---
+document.addEventListener('DOMContentLoaded', () => {
+    loadTasks();
+    initCalendar(); // Takvimi de burada başlatıyoruz
+    
+    if(searchInput) searchInput.addEventListener('input', applyFilters);
+    if(statusFilter) statusFilter.addEventListener('change', applyFilters);
+
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('jwtToken');
+            window.location.href = 'login.html';
+        });
+    }
+
+    if(taskTitleInput) taskTitleInput.addEventListener('input', () => clearError(taskTitleInput));
+    if(taskDescInput) taskDescInput.addEventListener('input', () => clearError(taskDescInput));
+    // --- TAKVİME OTOMATİK KAYDIRMA (AUTO SCROLL) ---
+    const dueDateInputForScroll = document.getElementById('task-duedate');
+    const calendarElement = document.getElementById('calendar');
+    
+    if (dueDateInputForScroll && calendarElement) {
+        dueDateInputForScroll.addEventListener('change', function() {
+            // Eğer inputtan bir tarih seçildiyse (boşaltılmadıysa) takvime kaydır
+            if (this.value) { 
+                calendarElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    }
+});
+
 // --- YARDIMCI DOĞRULAMA (VALIDATION) METOTLARI ---
 function showError(inputElement, message) {
     clearError(inputElement); 
@@ -60,109 +83,83 @@ function showError(inputElement, message) {
     errorDiv.className = 'invalid-feedback';
     errorDiv.innerText = message;
     
-    // YENİ VE DÜZELTİLMİŞ KISIM: Hatayı en sona değil, tam olarak ilgili kutunun hemen altına ekle!
     inputElement.insertAdjacentElement('afterend', errorDiv);
 }
 
 function clearError(inputElement) {
     inputElement.classList.remove('is-invalid'); 
-    
-    // YENİ VE DÜZELTİLMİŞ KISIM: Sadece bu kutunun hemen altındaki elementi kontrol et, hata mesajıysa sil
     const nextElement = inputElement.nextElementSibling;
     if (nextElement && nextElement.classList.contains('invalid-feedback')) {
         nextElement.remove();
     }
 }
 
-let isEditing = false;
-let currentEditId = null;
-let currentEditStatus = 0;
-
-// YENİ: API'den gelen orijinal veriyi hafızada tutacağımız dizi
-let allTasks = []; 
-
-// --- 2. Sayfa Yüklendiğinde Başlat ---
-// --- 2. Sayfa Yüklendiğinde Başlat ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadTasks();
-    
-    searchInput.addEventListener('input', applyFilters);
-    statusFilter.addEventListener('change', applyFilters);
-
-    // Çıkış Yap Butonu Dinleyicisi
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('jwtToken');
-            window.location.href = 'login.html';
-        });
-    }
-
-    // Kullanıcı forma yazı yazarken hataları temizle
-    taskTitleInput.addEventListener('input', () => clearError(taskTitleInput));
-    taskDescInput.addEventListener('input', () => clearError(taskDescInput));
-});
-
-// Veriyi Çek (Sadece veritabanından veri almak için)
+// --- VERİ ÇEKME VE LİSTELEME MANTIĞI ---
 async function loadTasks() {
     taskListContainer.innerHTML = '<p class="loading-text">Görevler yükleniyor...</p>';
     
-    // API'den veriyi alıp global dizimize kopyalıyoruz
-    allTasks = await getTasksFromAPI();
-    
-    // Dashboard'u tüm görevlere göre güncelle
-    updateDashboard(allTasks);
-
-    // Ekrana doğrudan çizmek yerine, filtreleme fonksiyonuna paslıyoruz
-    applyFilters(); 
+    try {
+        const data = await getTasksFromAPI();
+        allTasks = Array.isArray(data) ? data : []; 
+        
+        updateCalendarEvents(allTasks);
+        updateDashboard(allTasks);
+        applyFilters(); 
+    } catch (err) {
+        console.error("Görevler yüklenirken kritik hata:", err);
+        taskListContainer.innerHTML = '<p class="loading-text" style="color: red;">Görevler yüklenemedi. Lütfen sayfayı yenileyin veya tekrar giriş yapın.</p>';
+    }
 }
 
-// YENİ: Filtreleme Mantığı
 function applyFilters() {
-    // Kullanıcının aradığı metni küçük harfe çevir
-    const searchTerm = searchInput.value.toLowerCase().trim();
-    // Kullanıcının seçtiği durumu al (all, 0, 1, 2)
-    const filterValue = statusFilter.value;
+    currentPage = 1; 
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const filterValue = statusFilter ? statusFilter.value : 'all';
 
-    // JavaScript 'filter' fonksiyonu ile diziyi süzüyoruz
     const filteredTasks = allTasks.filter(task => {
         const taskTitle = (task.title ?? task.Title ?? "").toLowerCase();
         const taskStatus = normalizeStatus(task.status ?? task.Status);
         
-        // 1. Şart: Arama kutusundaki metin başlıkta geçiyor mu?
         const matchesSearch = taskTitle.includes(searchTerm);
-        
-        // 2. Şart: Dropdown menüden seçilen duruma uyuyor mu?
         let matchesStatus = true;
         if (filterValue !== "all") {
-            // Dropdown'dan gelen değer String olduğu için sayıya çevirip (parseInt) kıyaslıyoruz
             matchesStatus = taskStatus === parseInt(filterValue); 
         }
 
         return matchesSearch && matchesStatus;
     });
 
-    // Süzülmüş olan yeni diziyi ekrana çizmesi için gönderiyoruz
     renderTasks(filteredTasks);
 }
 
-// YENİ: Ekrana Çizme Mantığı (Eski loadTasks'ın HTML kısmı buraya taşındı)
 function renderTasks(tasksToRender) {
     window.currentTasks = tasksToRender;
     if (tasksToRender.length === 0) {
         taskListContainer.innerHTML = '<p class="loading-text">Bu kritere uygun görev bulunamadı.</p>';
+        removePaginationControls();
         return;
     }
 
+    const totalPages = Math.ceil(tasksToRender.length / itemsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedTasks = tasksToRender.slice(startIndex, endIndex);
+
     taskListContainer.innerHTML = ''; 
 
-    tasksToRender.forEach(task => {
+    paginatedTasks.forEach(task => {
         const taskId = parseInt(task.id ?? task.Id);
         const taskTitle = task.title ?? task.Title ?? "Başlıksız";
         const taskDesc = task.description ?? task.Description ?? "";
         
         const taskStatus = normalizeStatus(task.status ?? task.Status);
         const taskPriority = normalizePriority(task.priority ?? task.Priority);
+        
+        // EKLENDİ: Tarih verisini alıyoruz
+        const taskDueDate = task.dueDate ?? task.DueDate;
 
         const priorityInfo = getPriorityInfo(taskPriority);
         const statusInfo = getStatusInfo(taskStatus);
@@ -180,87 +177,152 @@ function renderTasks(tasksToRender) {
                 </div>
             </div>
             <div class="task-actions">
-                        ${taskStatus !== 2 ? `<button class="btn-action btn-update" onclick="completeTask(${task.id || task.Id})">Tamamla</button>` : ''}
-                        <button class="btn-action btn-edit" onclick="editTask(${task.id || task.Id})">Düzenle</button>
-                        <button class="btn-action btn-delete" onclick="removeTask(${task.id || task.Id})">Sil</button>
-                    </div>
+                ${taskStatus !== 2 ? `<button class="btn-action btn-update">Tamamla</button>` : ''}
+                <button class="btn-action btn-edit">Düzenle</button>
+                <button class="btn-action btn-delete">Sil</button>
+            </div>
         `;
 
         if (taskStatus !== 2) {
-            taskCard.querySelector('.btn-update').addEventListener('click', () => completeTask(taskId, taskTitle, taskDesc, taskPriority));
+            taskCard.querySelector('.btn-update').addEventListener('click', () => completeTask(taskId));
         }
         
-        taskCard.querySelector('.btn-edit').addEventListener('click', () => editTask(taskId, taskTitle, taskDesc, taskPriority, taskStatus));
+        // EKLENDİ: Düzenle fonksiyonuna taskDueDate gönderiliyor
+        taskCard.querySelector('.btn-edit').addEventListener('click', () => {
+            editTask(taskId, taskTitle, taskDesc, taskPriority, taskStatus, taskDueDate);
+        });
+        
         taskCard.querySelector('.btn-delete').addEventListener('click', () => removeTask(taskId));
 
         taskListContainer.appendChild(taskCard);
     });
+
+    renderPaginationControls(totalPages);
 }
 
-// --- 3. Form Gönderimi (Ekleme ve Düzenleme) ---
-taskForm.addEventListener('submit', async (e) => {
-    e.preventDefault(); 
-    // --- GÖREV DOĞRULAMA KONTROLLERİ ---
-    let hasError = false;
-
-    // Başlık 3 karakterden kısaysa hata ver
-    if (taskTitleInput.value.trim().length < 3) {
-        showError(taskTitleInput, "Görev başlığı en az 3 karakter olmalıdır.");
-        hasError = true;
-    } 
-
-    // Açıklama 500 karakterden uzunsa hata ver
-    if (taskDescInput.value.trim().length > 500) {
-        showError(taskDescInput, "Açıklama en fazla 500 karakter olabilir.");
-        hasError = true;
+// --- SAYFALAMA (PAGINATION) MANTIĞI ---
+function renderPaginationControls(totalPages) {
+    let paginationContainer = document.getElementById('pagination-container');
+    if (!paginationContainer) {
+        paginationContainer = document.createElement('div');
+        paginationContainer.id = 'pagination-container';
+        paginationContainer.style.display = 'flex';
+        paginationContainer.style.justifyContent = 'center';
+        paginationContainer.style.alignItems = 'center';
+        paginationContainer.style.gap = '8px';
+        paginationContainer.style.marginTop = '20px';
+        taskListContainer.after(paginationContainer);
     }
 
-    // Eğer hata varsa alt satırlara geçme ve API'ye istek gönderme!
-    if (hasError) return; 
-    // -----------------------------------
-    submitBtn.disabled = true;
-
-    if (isEditing) {
-        submitBtn.innerText = "Güncelleniyor...";
-        const updateData = {
-            id: currentEditId, 
-            title: taskTitleInput.value,
-            description: taskDescInput.value,
-            status: currentEditStatus,
-            priority: parseInt(taskPriorityInput.value)
-        };
-
-        const success = await updateTaskInAPI(currentEditId, updateData);
-        if (success) {
-            resetForm();
-            await loadTasks(); 
-        } else {
-            alert("Güncelleme başarısız oldu.");
-        }
-    } else {
-        submitBtn.innerText = "Ekleniyor...";
-        const createData = {
-            title: taskTitleInput.value,
-            description: taskDescInput.value,
-            priority: parseInt(taskPriorityInput.value)
-        };
-
-        const createdTask = await addTaskToAPI(createData);
-        if (createdTask) {
-            resetForm(); 
-            await loadTasks(); 
-        } else {
-            showToast("Görev işlemi sırasında bir hata oluştu.", "error");
-        }
+    if (totalPages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
     }
 
-    submitBtn.disabled = false;
-});
+    let html = `
+        <button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} style="padding: 6px 14px; border: 1px solid #cbd5e1; background: white; color: #334155; border-radius: 6px; cursor: pointer; font-weight: 500;">Önceki</button>
+    `;
 
-function editTask(id, title, description, priority, status) {
+    for (let i = 1; i <= totalPages; i++) {
+        html += `
+            <button onclick="changePage(${i})" style="padding: 6px 12px; border: 1px solid ${i === currentPage ? '#6c5ce7' : '#cbd5e1'}; background: ${i === currentPage ? '#6c5ce7' : 'white'}; color: ${i === currentPage ? 'white' : '#334155'}; border-radius: 6px; cursor: pointer; font-weight: bold;">${i}</button>
+        `;
+    }
+
+    html += `
+        <button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''} style="padding: 6px 14px; border: 1px solid #cbd5e1; background: white; color: #334155; border-radius: 6px; cursor: pointer; font-weight: 500;">Sonraki</button>
+    `;
+
+    paginationContainer.innerHTML = html;
+}
+
+function removePaginationControls() {
+    const paginationContainer = document.getElementById('pagination-container');
+    if (paginationContainer) paginationContainer.innerHTML = '';
+}
+
+window.changePage = function(page) {
+    currentPage = page;
+    renderTasks(window.currentTasks);
+    taskListContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+};
+
+// --- 3. FORM GÖNDERİMİ (EKLEME VE DÜZENLEME) ---
+if (taskForm) {
+    taskForm.addEventListener('submit', async (e) => {
+        e.preventDefault(); 
+        let hasError = false;
+
+        const dueDateInput = document.getElementById('task-duedate');
+        const dueDate = dueDateInput && dueDateInput.value ? dueDateInput.value : null;
+
+        if (taskTitleInput.value.trim().length < 3) {
+            showError(taskTitleInput, "Görev başlığı en az 3 karakter olmalıdır.");
+            hasError = true;
+        } 
+
+        if (taskDescInput.value.trim().length > 500) {
+            showError(taskDescInput, "Açıklama en fazla 500 karakter olabilir.");
+            hasError = true;
+        }
+
+        if (hasError) return; 
+        
+        submitBtn.disabled = true;
+
+        if (isEditing) {
+            submitBtn.innerText = "Güncelleniyor...";
+            const updateData = {
+                id: currentEditId, 
+                title: taskTitleInput.value,
+                description: taskDescInput.value,
+                status: currentEditStatus,
+                priority: parseInt(taskPriorityInput.value),
+                dueDate: dueDate // EKSİK OLAN KISIM EKLENDİ
+            };
+
+            const success = await updateTaskInAPI(currentEditId, updateData);
+            if (success) {
+                resetForm();
+                await loadTasks(); 
+            } else {
+                if (typeof showToast === "function") showToast("Güncelleme başarısız oldu.", "error");
+            }
+        } else {
+            submitBtn.innerText = "Ekleniyor...";
+            const createData = {
+                title: taskTitleInput.value,
+                description: taskDescInput.value,
+                priority: parseInt(taskPriorityInput.value),
+                dueDate: dueDate // EKSİK OLAN KISIM EKLENDİ
+            };
+
+            const createdTask = await addTaskToAPI(createData);
+            if (createdTask) {
+                resetForm(); 
+                await loadTasks(); 
+            } else {
+                if (typeof showToast === "function") showToast("Görev işlemi sırasında bir hata oluştu.", "error");
+            }
+        }
+
+        submitBtn.disabled = false;
+    });
+}
+
+function editTask(id, title, description, priority, status, dueDate) {
     taskTitleInput.value = title;
     taskDescInput.value = description;
     taskPriorityInput.value = priority;
+    
+    // Formdaki tarih kutusuna var olan tarihi doldur
+    const dueDateInput = document.getElementById('task-duedate');
+    if(dueDateInput && dueDate) {
+        dueDateInput.value = dueDate.split('T')[0];
+    } else if (dueDateInput) {
+        dueDateInput.value = '';
+    }
+
     isEditing = true;
     currentEditId = id;
     currentEditStatus = status;
@@ -270,20 +332,25 @@ function editTask(id, title, description, priority, status) {
 }
 
 function resetForm() {
-    taskForm.reset();
-    taskPriorityInput.value = "1";
+    if(taskForm) taskForm.reset();
+    if(taskPriorityInput) taskPriorityInput.value = "1";
+    
+    const dueDateInput = document.getElementById('task-duedate');
+    if(dueDateInput) dueDateInput.value = '';
+
     isEditing = false;
     currentEditId = null;
     currentEditStatus = 0;
-    submitBtn.innerText = "Görevi Ekle";
-    submitBtn.style.backgroundColor = "var(--primary)"; 
+    if(submitBtn) {
+        submitBtn.innerText = "Görevi Ekle";
+        submitBtn.style.backgroundColor = "var(--primary)"; 
+    }
 }
 
+// --- CRUD OPERASYONLARI YARDIMCILARI ---
 async function completeTask(id) {
     const token = localStorage.getItem('jwtToken');
-
     try {
-        // Bulduğumuz 5072 portuyla, arka uca az önce yazdığımız özel kapıya gidiyoruz
         const response = await fetch(`http://localhost:5072/api/tasks/${id}/complete`, {
             method: 'PUT',
             headers: {
@@ -293,22 +360,9 @@ async function completeTask(id) {
         });
 
         if (response.ok) {
-            // 1. Önce arka uçtan güncel listeyi çekip ekrana çizdiriyoruz
-            if (typeof loadTasks === "function") {
-                await loadTasks(); 
-            }
-            
-            // 2. ÇÖZÜM BURASI: Güncel görev listesini (window.currentTasks) Dashboard'a parametre olarak gönderiyoruz!
-            if (typeof updateDashboard === "function" && window.currentTasks) {
-                updateDashboard(window.currentTasks); 
-            } 
-            
-            if (typeof renderDashboard === "function" && window.currentTasks) {
-                renderDashboard(window.currentTasks); 
-            }
-
+            if (typeof loadTasks === "function") await loadTasks(); 
             if (typeof showToast === "function") showToast("Görev başarıyla tamamlandı!", "success");
-        }else {
+        } else {
             console.error("API Hatası:", await response.text());
             if (typeof showToast === "function") showToast("Güncellenirken bir hata oluştu.", "error");
         }
@@ -316,39 +370,31 @@ async function completeTask(id) {
         console.error("Bağlantı Hatası:", err);
     }
 }
+
 async function removeTask(id) {
-    // Modern onay penceresini çağırıyoruz
     const result = await Swal.fire({
         title: 'Emin misiniz?',
         text: "Bu görevi kalıcı olarak silmek üzeresiniz, geri dönüşü yoktur!",
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonColor: '#d33', // Kırmızı silme butonu
-        cancelButtonColor: '#3085d6', // Mavi iptal butonu
+        confirmButtonColor: '#d33', 
+        cancelButtonColor: '#3085d6',
         confirmButtonText: 'Evet, Sil!',
         cancelButtonText: 'İptal',
         background: '#fff',
         borderRadius: '10px'
     });
 
-    // Eğer kullanıcı "Evet, Sil!" butonuna tıkladıysa
     if (result.isConfirmed) {
         try {
-            // Projendeki mevcut API silme fonksiyonunu çağırıyoruz
             const success = await deleteTaskFromAPI(id); 
-            
             if (success) {
-                // Listeyi ve panoyu (dashboard) güncelliyoruz
                 if (typeof loadTasks === "function") await loadTasks();
-                if (typeof updateDashboard === "function" && window.currentTasks) updateDashboard(window.currentTasks);
-                if (typeof renderDashboard === "function" && window.currentTasks) renderDashboard(window.currentTasks);
-
-                // Silme başarılı olduktan sonra çıkan küçük başarı animasyonu
                 Swal.fire({
                     title: 'Silindi!',
                     text: 'Görev başarıyla silindi.',
                     icon: 'success',
-                    timer: 1500, // 1.5 saniye sonra kendi kapanır
+                    timer: 1500,
                     showConfirmButton: false
                 });
             } else {
@@ -361,19 +407,19 @@ async function removeTask(id) {
     }
 }
 
-// --- İstatistik Panosu (Dashboard) ---
+// --- İSTATİSTİK (DASHBOARD) PANOSU ---
 function updateDashboard(tasksArray) {
     const total = tasksArray.length;
     const completed = tasksArray.filter(task => {
         return normalizeStatus(task.status ?? task.Status) === 2;
     }).length;
     
-    statTotal.innerText = total;
-    statCompleted.innerText = completed;
-    statPending.innerText = total - completed;
+    if(statTotal) statTotal.innerText = total;
+    if(statCompleted) statCompleted.innerText = completed;
+    if(statPending) statPending.innerText = total - completed;
 }
 
-// --- Yardımcı Araçlar: Veri Temizleme ---
+// --- YARDIMCI ARAÇLAR: VERİ TEMİZLEME VE GÖRÜNÜM ---
 function normalizeStatus(val) {
     if (val === null || val === undefined) return 0;
     const s = String(val).toLowerCase().trim();
@@ -406,17 +452,35 @@ function getStatusInfo(statusValue) {
         case 2: return { text: 'Tamamlandı', class: 'badge-green' };
         default: return { text: 'Belirsiz', class: 'badge-blue' };
     }
-    // YÖNETİCİ PANELİ YETKİ KONTROLÜ (Global Scope)
-window.checkAdminAccess = function(event) {
-    event.preventDefault(); 
-    
-    // Rolü okuma kısmı (Giriş yaparken nasıl kaydettiysen o geçerli olur)
-    const userRole = localStorage.getItem('role') || localStorage.getItem('userRole'); 
+}
 
-    if (userRole === 'Admin') {
+// YÖNETİCİ PANELİ YETKİ KONTROLÜ (Kusursuz JWT Versiyonu)
+window.checkAdminAccess = function(event) {
+    if(event) event.preventDefault(); 
+    
+    let isAdmin = false;
+    const token = localStorage.getItem('jwtToken'); 
+
+    if (token) {
+        try {
+            // JWT Token'ın orta kısmını (payload) şifreden çözüyoruz
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            
+            // C#'ın JWT içine koyduğu standart rol etiketini yakalıyoruz
+            const role = payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || payload.role || payload.Role || "";
+            
+            // Büyük/küçük harf duyarlılığını ortadan kaldırarak kontrol ediyoruz
+            if (role.toLowerCase() === 'admin') {
+                isAdmin = true;
+            }
+        } catch (err) {
+            console.error("Token çözümlenemedi:", err);
+        }
+    }
+
+    if (isAdmin) {
         window.location.href = 'admin.html';
     } else {
-        // Eğer showToast ana sayfada çalışmazsa standart alert de kullanabiliriz:
         if (typeof showToast === "function") {
             showToast("Bu alana erişim yetkiniz bulunmamaktadır. Sadece yöneticiler giriş yapabilir.", "error");
         } else {
@@ -424,11 +488,8 @@ window.checkAdminAccess = function(event) {
         }
     }
 };
-}
 
-// --- SİGNALR YERİNE %100 GARANTİLİ HTTP POLLING (SÜREKLİ SORGULAMA) SİSTEMİ ---
-
-// --- BİLDİRİMLERİ ÇEKEN VE LİSTELEYEN GÜNCELLENMİŞ FONKSİYON ---
+// --- HTTP POLLING BİLDİRİM SİSTEMİ ---
 async function fetchNotifications() {
     const token = localStorage.getItem('jwtToken');
     if (!token) return;
@@ -444,7 +505,6 @@ async function fetchNotifications() {
             const badge = document.getElementById('notification-count');
             const notificationList = document.getElementById('notification-list');
             
-            // 1. Sayaç (Badge) Sadece OKUNMAMIŞ olanların sayısını gösterir
             const unreadCount = notifications.filter(n => !(n.isRead ?? n.IsRead)).length;
             
             if (unreadCount > 0 && badge) {
@@ -454,13 +514,10 @@ async function fetchNotifications() {
                 badge.style.display = 'none';
             }
 
-            // 2. Bildirimleri HTML listesine ekle
             if (notificationList) {
-                // ÇOK ÖNEMLİ: Mesajlar çok olduğunda kaydırılabilir (scroll) şık bir alan oluşturuyoruz
                 notificationList.style.maxHeight = "320px";
                 notificationList.style.overflowY = "auto";
-                
-                notificationList.innerHTML = ''; // Önce listeyi temizle
+                notificationList.innerHTML = ''; 
                 
                 if (notifications.length === 0) {
                     notificationList.innerHTML = '<li style="padding: 15px; text-align: center; color: #888; list-style:none;">Bildirim bulunmuyor.</li>';
@@ -480,9 +537,8 @@ async function fetchNotifications() {
                     newItem.style.gap = "10px";
                     newItem.style.listStyleType = "none";
                     
-                    // Okunmamış mesajlar hafif arka plan rengiyle öne çıkabilir, okunanlar normal kalır
                     if (!isRead) {
-                        newItem.style.backgroundColor = "#f8fafc"; // Okunmamışlara hafif gri/mavi ton
+                        newItem.style.backgroundColor = "#f8fafc"; 
                     }
                     
                     const msgText = notif.message || notif.Message || "Yeni bir bildiriminiz var.";
@@ -493,7 +549,7 @@ async function fetchNotifications() {
                             <div style="font-weight: 600; color: #1e293b; margin-bottom: 3px;">Sistem Bildirimi</div>
                             <div style="font-size: 13px;">${msgText}</div>
                         </div>
-                    `;
+                    `;  
                     notificationList.appendChild(newItem);
                 });
             }
@@ -503,38 +559,28 @@ async function fetchNotifications() {
     }
 }
 
-// 2. Zamanlayıcı Kur: Her 3 saniyede bir (3000 ms) arka planda sessizce bildirimleri kontrol et
 setInterval(fetchNotifications, 3000);
-
-// Sayfa ilk yüklendiğinde de beklemeden bir kere çek
 fetchNotifications(); 
-
 
 window.toggleNotifications = async function(event) {
     if (event) event.stopPropagation(); 
     
-    console.log("🔔 Zile tıklandı, menü açılıyor...");
-    
     const notificationMenu = document.getElementById('notification-dropdown'); 
     
     if (notificationMenu) {
-        // CSS engellerini aşmak için doğrudan inline style ile zorla açıyoruz!
         const currentDisplay = window.getComputedStyle(notificationMenu).display;
         
         if (currentDisplay === 'none' || notificationMenu.style.display === 'none' || notificationMenu.style.display === '') {
-            // Ekranda görünür olması için display block yapıyoruz ve pozisyonunu garantiye alıyoruz
             notificationMenu.style.setProperty('display', 'block', 'important');
             notificationMenu.style.setProperty('visibility', 'visible', 'important');
             notificationMenu.style.setProperty('opacity', '1', 'important');
             
-            // Sayacı sıfırla ve gizle
             const badge = document.getElementById('notification-count');
             if(badge) {
                 badge.innerText = '0';
                 badge.style.display = 'none';
             }
 
-            // Okundu olarak işaretle
             const token = localStorage.getItem('jwtToken');
             if (token) {
                 try {
@@ -546,21 +592,16 @@ window.toggleNotifications = async function(event) {
                     console.error("Okundu olarak işaretlenemedi:", err);
                 }
             }
-            
         } else {
             notificationMenu.style.setProperty('display', 'none', 'important');
         }
-    } else {
-        console.error("HATA: HTML içinde 'notification-dropdown' id'li alan bulunamadı.");
     }
 };
 
-// Bonus: Boşluğa tıklayınca bildirim menüsünün de kapanmasını sağlayan kod
 document.addEventListener('click', function(event) {
     const notifMenu = document.getElementById('notification-dropdown');
     const bellBtn = document.getElementById('notification-bell');
     
-    // Eğer tıklanan yer zil butonu veya menünün içi değilse, menüyü kapat
     if (notifMenu && notifMenu.style.display === 'block') {
         if (!notifMenu.contains(event.target) && (!bellBtn || !bellBtn.contains(event.target))) {
             notifMenu.style.display = 'none';
@@ -568,13 +609,44 @@ document.addEventListener('click', function(event) {
     }
 });
 
-    
-    
-    
+// --- TAKVİM (FULLCALENDAR) SİSTEMİ ---
+function initCalendar() {
+    const calendarEl = document.getElementById('calendar');
+    if (!calendarEl) return;
 
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        locale: 'tr',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,listWeek'
+        },
+        events: [] 
+    });
+    calendar.render();
+}
 
+function updateCalendarEvents(tasks) {
+    if (!calendar) return;
 
+    calendar.getEvents().forEach(event => event.remove());
 
+    tasks.forEach(task => {
+        const dueDate = task.dueDate ?? task.DueDate;
 
+        if (dueDate) {
+            const status = task.status ?? task.Status;
+            let color = '#f59e0b'; 
+            if (status === 2) color = '#10b981'; 
+            else if (status === 1) color = '#3b82f6'; 
 
-
+            calendar.addEvent({
+                title: task.title ?? task.Title,
+                start: dueDate.split('T')[0],
+                backgroundColor: color,
+                borderColor: color
+            });
+        }
+    });
+}
