@@ -431,6 +431,7 @@ async function loadTasksForSelectedUser() {
         console.error("Hata:", err);
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #dc2626;">Bağlantı hatası oluştu.</td></tr>';
     }
+    paginateAdminTasks(1);
 }
 
 // 3. Ekleme ve Güncelleme Modalını Açar
@@ -608,7 +609,164 @@ function setupPaginationButtons(totalItems) {
 
 // Sayfa yüklendiğinde logları doğrudan çek
 loadSecurityLogs();
+// Sıralama durumu için global değişkenler
 
+// SIRALAMA İÇİN GLOBAL DEĞİŞKENLER
+let currentSortColumn = '';
+let isSortAscending = true;
+
+// Tabloyu Doğrudan HTML Üzerinden (DOM) Sıralayan Tam Korumalı Kod
+function sortAdminTasks(columnName) {
+    // 1. KRİTİK DÜZELTME: HTML'den 'Title' veya 'TITLE' gelse bile onu 'title' yapar
+    const safeColumnName = columnName.toLowerCase();
+    
+    console.log("--- Sıralama Başladı ---");
+    console.log("Orijinal Tıklanan Sütun:", columnName);
+    console.log("İşleme Alınan Sütun:", safeColumnName);
+
+    // İkon span'ını bul (id'si büyük veya küçük harfle yazılmış olabilir diye ikisine de bakıyoruz)
+    const iconSpan = document.getElementById(`sort-icon-${safeColumnName}`) || document.getElementById(`sort-icon-${columnName}`);
+    
+    // Tabloyu ve içeriği bul
+    const table = iconSpan ? iconSpan.closest('table') : document.querySelector('table');
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody') || table;
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.querySelectorAll('td').length >= 2);
+    
+    if (rows.length === 0) return;
+
+    // Yön Belirleme
+    if (currentSortColumn === safeColumnName) {
+        isSortAscending = !isSortAscending;
+    } else {
+        currentSortColumn = safeColumnName;
+        isSortAscending = true;
+    }
+
+    // 2. KRİTİK DÜZELTME: Artık safeColumnName (küçük harf) kullanıldığı için eşleşme %100 başarılı olacak
+    const columnIndexMap = {
+        'title': 0,        
+        'description': 1,  
+        'priority': 2,     
+        'status': 3        
+    };
+    const colIndex = columnIndexMap[safeColumnName];
+
+    if (colIndex === undefined) {
+        console.error("HATA: Sütun eşleşmesi bulunamadı!");
+        return;
+    }
+
+    // Sıralama İşlemi
+    rows.sort((rowA, rowB) => {
+        const tdsA = rowA.querySelectorAll('td');
+        const tdsB = rowB.querySelectorAll('td');
+
+       let valA = tdsA[colIndex] ? tdsA[colIndex].textContent.trim() : '';
+       let valB = tdsB[colIndex] ? tdsB[colIndex].textContent.trim() : '';
+
+        // Öncelik Mantığı (Yüksek > Orta > Düşük)
+        if (safeColumnName === 'priority') {
+            const pMap = { 'Düşük': 1, 'Orta': 2, 'Yüksek': 3 };
+            valA = pMap[valA] || 0;
+            valB = pMap[valB] || 0;
+        }
+        // Durum Mantığı (Tamamlandı > Devam Ediyor)
+        else if (safeColumnName === 'status') {
+            valA = (valA === 'Tamamlandı') ? 2 : 1;
+            valB = (valB === 'Tamamlandı') ? 2 : 1;
+        }
+        // Metin Mantığı
+        else {
+            valA = valA.toLowerCase();
+            valB = valB.toLowerCase();
+        }
+
+        if (valA < valB) return isSortAscending ? -1 : 1;
+        if (valA > valB) return isSortAscending ? 1 : -1;
+        return 0;
+        paginateAdminTasks(1);
+    });
+
+    // Sıralanmış satırları tabloya geri ekle (Gözle görülür değişiklik burada olur)
+    rows.forEach(row => tbody.appendChild(row));
+    console.log("Sıralama başarılı, tablo güncellendi!");
+
+    // İkonları (Okları) Temizle
+    const allIcons = ['title', 'description', 'priority', 'status', 'Title', 'Description', 'Priority', 'Status'];
+    allIcons.forEach(id => {
+        const el = document.getElementById(`sort-icon-${id}`);
+        if(el) el.innerText = '';
+    });
+    
+    // Doğru ikonu (Ok İşaretini) yerleştir
+    const iconTarget = document.getElementById(`sort-icon-${safeColumnName}`) || document.getElementById(`sort-icon-${columnName}`);
+    if (iconTarget) {
+        iconTarget.innerText = isSortAscending ? ' ▲' : ' ▼';
+    }
+}
+// SAYFALAMA İÇİN GLOBAL DEĞİŞKENLER
+let currentTaskPage = 1;
+const tasksPerPage = 5; // Bir sayfada kaç görev gösterileceğini buradan ayarlayabilirsin
+
+// Sayfalama ve Satırları Gizleme/Gösterme İşlemi
+function paginateAdminTasks(page = 1) {
+    currentTaskPage = page;
+    
+    // Tabloyu ve satırları bul
+    const iconSpan = document.getElementById('sort-icon-title');
+    const table = iconSpan ? iconSpan.closest('table') : null;
+    if (!table) return;
+
+    const tbody = table.querySelector('tbody') || table;
+    const allRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.querySelectorAll('td').length >= 2);
+    
+    if (allRows.length === 0) return;
+
+    // Toplam sayfa sayısını hesapla
+    const totalPages = Math.ceil(allRows.length / tasksPerPage);
+    
+    if (currentTaskPage < 1) currentTaskPage = 1;
+    if (currentTaskPage > totalPages) currentTaskPage = totalPages;
+
+    const startIndex = (currentTaskPage - 1) * tasksPerPage;
+    const endIndex = startIndex + tasksPerPage;
+
+    // Hangi satırların görünüp gizleneceğini ayarla
+    allRows.forEach((row, index) => {
+        if (index >= startIndex && index < endIndex) {
+            row.style.display = ''; // Bu sayfadaki görevleri göster
+        } else {
+            row.style.display = 'none'; // Diğer sayfadaki görevleri gizle
+        }
+    });
+
+    // Butonları çiz
+    renderTaskPaginationButtons(totalPages);
+}
+
+// Butonları HTML'e Çizen Fonksiyon
+function renderTaskPaginationButtons(totalPages) {
+    const container = document.getElementById('task-pagination');
+    if (!container) return;
+
+    let html = '';
+    
+    // Önceki Butonu
+    html += `<button onclick="paginateAdminTasks(${currentTaskPage - 1})" ${currentTaskPage === 1 ? 'disabled' : ''} style="padding: 8px 16px; border: 1px solid #e2e8f0; background: ${currentTaskPage === 1 ? '#f8fafc' : 'white'}; color: ${currentTaskPage === 1 ? '#94a3b8' : '#333'}; border-radius: 6px; cursor: ${currentTaskPage === 1 ? 'not-allowed' : 'pointer'}; font-weight: 500;">Önceki</button>`;
+
+    // Sayfa Numaraları
+    for (let i = 1; i <= totalPages; i++) {
+        const isActive = i === currentTaskPage;
+        html += `<button onclick="paginateAdminTasks(${i})" style="padding: 8px 16px; border: 1px solid ${isActive ? '#6c5ce7' : '#e2e8f0'}; background: ${isActive ? '#6c5ce7' : 'white'}; color: ${isActive ? 'white' : '#64748b'}; border-radius: 6px; cursor: pointer; font-weight: bold;">${i}</button>`;
+    }
+
+    // Sonraki Butonu
+    html += `<button onclick="paginateAdminTasks(${currentTaskPage + 1})" ${currentTaskPage === totalPages ? 'disabled' : ''} style="padding: 8px 16px; border: 1px solid #e2e8f0; background: ${currentTaskPage === totalPages ? '#f8fafc' : 'white'}; color: ${currentTaskPage === totalPages ? '#94a3b8' : '#333'}; border-radius: 6px; cursor: ${currentTaskPage === totalPages ? 'not-allowed' : 'pointer'}; font-weight: 500;">Sonraki</button>`;
+
+    container.innerHTML = html;
+}
 
 
 

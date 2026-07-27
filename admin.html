@@ -178,20 +178,31 @@
     </div>
 
     <table style="width: 100%; text-align: left; border-collapse: collapse;">
-        <thead>
-            <tr style="border-bottom: 2px solid #ddd; background-color: #f8fafc;">
-                <th style="padding: 12px;">Görev Adı</th>
-                <th style="padding: 12px;">Açıklama</th>
-                <th style="padding: 12px;">Öncelik</th>
-                <th style="padding: 12px;">Durum</th>
-                <th style="padding: 12px; text-align: right;">İşlemler</th>
-            </tr>
-        </thead>
+       <thead style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+    <tr style="text-align: left;">
+        <!-- Tıklama (onclick) özellikleri ve İkon (span) alanları eklendi -->
+        <th onclick="sortAdminTasks('Title')" style="cursor: pointer; padding: 15px; user-select: none; transition: 0.2s;">
+            Görev Adı <span id="sort-icon-title" style="font-size: 12px; margin-left: 5px; color: #6c5ce7;"></span>
+        </th>
+        <th onclick="sortAdminTasks('Description')" style="cursor: pointer; padding: 15px; user-select: none; transition: 0.2s;">
+            Açıklama <span id="sort-icon-description" style="font-size: 12px; margin-left: 5px; color: #6c5ce7;"></span>
+        </th>
+        <th onclick="sortAdminTasks('Priority')" style="cursor: pointer; padding: 15px; user-select: none; transition: 0.2s;">
+            Öncelik <span id="sort-icon-priority" style="font-size: 12px; margin-left: 5px; color: #6c5ce7;"></span>
+        </th>
+        <th onclick="sortAdminTasks('Status')" style="cursor: pointer; padding: 15px; user-select: none; transition: 0.2s;">
+            Durum <span id="sort-icon-status" style="font-size: 12px; margin-left: 5px; color: #6c5ce7;"></span>
+        </th>
+        <th style="padding: 15px; color: #333;">İşlemler</th>
+    </tr>
+</thead>
         <tbody id="task-management-list">
             <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 30px;">Kayıtları görmek için lütfen üstten kullanıcı seçin.</td></tr>
         </tbody>
     </table>
     <div id="tasks-pagination" class="pagination-container"></div>
+    <div id="task-pagination" style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 25px; padding-bottom: 20px;">
+</div>
 </div>
 
     <!-- Sekme Geçişlerini Sağlayan JavaScript Code -->

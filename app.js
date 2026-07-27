@@ -425,125 +425,156 @@ window.checkAdminAccess = function(event) {
     }
 };
 }
-// --- BİLDİRİM SİSTEMİ (DUMMY VERİLERLE TEST) ---
 
-// İleride bu veriler API'den gelecek (örn: fetch('/api/notifications'))
-let notifications = [
-    { id: 1, message: "Admin sana 'Veritabanı Yedeklemesi' görevini atadı.", time: "5 dakika önce", isRead: false },
-    { id: 2, message: "Admin 'Arayüz Tasarımı' görevini güncelledi.", time: "1 saat önce", isRead: false },
-    { id: 3, message: "Admin sana 'Toplantı Notları' görevini atadı.", time: "Dün", isRead: true }
-];
+// --- SİGNALR YERİNE %100 GARANTİLİ HTTP POLLING (SÜREKLİ SORGULAMA) SİSTEMİ ---
 
-// Sayfa yüklendiğinde bildirimleri ekrana bas
-document.addEventListener('DOMContentLoaded', () => {
-    renderNotifications();
-});
+// --- BİLDİRİMLERİ ÇEKEN VE LİSTELEYEN GÜNCELLENMİŞ FONKSİYON ---
+async function fetchNotifications() {
+    const token = localStorage.getItem('jwtToken');
+    if (!token) return;
 
-function renderNotifications() {
-    const list = document.getElementById('notification-list');
-    const badge = document.getElementById('notification-count');
+    try {
+        const response = await fetch('http://localhost:5072/api/tasks/notifications', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const notifications = await response.json();
+            
+            const badge = document.getElementById('notification-count');
+            const notificationList = document.getElementById('notification-list');
+            
+            // 1. Sayaç (Badge) Sadece OKUNMAMIŞ olanların sayısını gösterir
+            const unreadCount = notifications.filter(n => !(n.isRead ?? n.IsRead)).length;
+            
+            if (unreadCount > 0 && badge) {
+                badge.innerText = unreadCount;
+                badge.style.display = 'inline-block';
+            } else if (badge) {
+                badge.style.display = 'none';
+            }
+
+            // 2. Bildirimleri HTML listesine ekle
+            if (notificationList) {
+                // ÇOK ÖNEMLİ: Mesajlar çok olduğunda kaydırılabilir (scroll) şık bir alan oluşturuyoruz
+                notificationList.style.maxHeight = "320px";
+                notificationList.style.overflowY = "auto";
+                
+                notificationList.innerHTML = ''; // Önce listeyi temizle
+                
+                if (notifications.length === 0) {
+                    notificationList.innerHTML = '<li style="padding: 15px; text-align: center; color: #888; list-style:none;">Bildirim bulunmuyor.</li>';
+                    return;
+                }
+
+                notifications.forEach(notif => {
+                    const newItem = document.createElement('li');
+                    const isRead = notif.isRead ?? notif.IsRead;
+                    
+                    newItem.style.padding = "12px 15px";
+                    newItem.style.borderBottom = "1px solid #f1f5f9";
+                    newItem.style.fontSize = "14px";
+                    newItem.style.color = "#334155";
+                    newItem.style.display = "flex";
+                    newItem.style.alignItems = "start";
+                    newItem.style.gap = "10px";
+                    newItem.style.listStyleType = "none";
+                    
+                    // Okunmamış mesajlar hafif arka plan rengiyle öne çıkabilir, okunanlar normal kalır
+                    if (!isRead) {
+                        newItem.style.backgroundColor = "#f8fafc"; // Okunmamışlara hafif gri/mavi ton
+                    }
+                    
+                    const msgText = notif.message || notif.Message || "Yeni bir bildiriminiz var.";
+                    
+                    newItem.innerHTML = `
+                        <span style="font-size: 16px;">🔔</span>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 3px;">Sistem Bildirimi</div>
+                            <div style="font-size: 13px;">${msgText}</div>
+                        </div>
+                    `;
+                    notificationList.appendChild(newItem);
+                });
+            }
+        }
+    } catch (err) {
+        console.error("Bildirimler kontrol edilemedi:", err);
+    }
+}
+
+// 2. Zamanlayıcı Kur: Her 3 saniyede bir (3000 ms) arka planda sessizce bildirimleri kontrol et
+setInterval(fetchNotifications, 3000);
+
+// Sayfa ilk yüklendiğinde de beklemeden bir kere çek
+fetchNotifications(); 
+
+
+window.toggleNotifications = async function(event) {
+    if (event) event.stopPropagation(); 
     
-    list.innerHTML = '';
-    let unreadCount = 0;
-
-    notifications.forEach(notif => {
-        if (!notif.isRead) unreadCount++;
-
-        const li = document.createElement('li');
-        li.className = `notification-item ${notif.isRead ? '' : 'unread'}`;
-        li.innerHTML = `
-            <span>${notif.message}</span>
-            <span class="notification-time">${notif.time}</span>
-        `;
-        list.appendChild(li);
-    });
-
-    // Okunmamış bildirim varsa sayacı göster, yoksa gizle
-    if (unreadCount > 0) {
-        badge.innerText = unreadCount;
-        badge.style.display = 'block';
-    } else {
-        badge.style.display = 'none';
-    }
-}
-
-// Zile tıklandığında menüyü aç/kapat
-function toggleNotifications() {
-    const dropdown = document.getElementById('notification-dropdown');
-    dropdown.classList.toggle('show');
-
-    // Menü açıldığında bildirimleri "Okundu" olarak işaretle
-    if (dropdown.classList.contains('show')) {
-        notifications.forEach(n => n.isRead = true);
+    console.log("🔔 Zile tıklandı, menü açılıyor...");
+    
+    const notificationMenu = document.getElementById('notification-dropdown'); 
+    
+    if (notificationMenu) {
+        // CSS engellerini aşmak için doğrudan inline style ile zorla açıyoruz!
+        const currentDisplay = window.getComputedStyle(notificationMenu).display;
         
-        // Sayacı gizlemek ve arka planları normale çevirmek için tekrar render et
-        // (İsteğe bağlı olarak bu işlemi bir süre gecikmeyle de yapabilirsin)
-        setTimeout(() => {
-            renderNotifications();
-        }, 1500); // 1.5 saniye sonra okundu işaretler
-    }
-}
+        if (currentDisplay === 'none' || notificationMenu.style.display === 'none' || notificationMenu.style.display === '') {
+            // Ekranda görünür olması için display block yapıyoruz ve pozisyonunu garantiye alıyoruz
+            notificationMenu.style.setProperty('display', 'block', 'important');
+            notificationMenu.style.setProperty('visibility', 'visible', 'important');
+            notificationMenu.style.setProperty('opacity', '1', 'important');
+            
+            // Sayacı sıfırla ve gizle
+            const badge = document.getElementById('notification-count');
+            if(badge) {
+                badge.innerText = '0';
+                badge.style.display = 'none';
+            }
 
-// Menü dışına tıklandığında açılır pencereyi kapat
-window.onclick = function(event) {
-    if (!event.target.closest('.notification-container')) {
-        const dropdown = document.getElementById('notification-dropdown');
-        if (dropdown && dropdown.classList.contains('show')) {
-            dropdown.classList.remove('show');
+            // Okundu olarak işaretle
+            const token = localStorage.getItem('jwtToken');
+            if (token) {
+                try {
+                    await fetch('http://localhost:5072/api/tasks/notifications/mark-as-read', {
+                        method: 'PUT',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                } catch (err) {
+                    console.error("Okundu olarak işaretlenemedi:", err);
+                }
+            }
+            
+        } else {
+            notificationMenu.style.setProperty('display', 'none', 'important');
+        }
+    } else {
+        console.error("HATA: HTML içinde 'notification-dropdown' id'li alan bulunamadı.");
+    }
+};
+
+// Bonus: Boşluğa tıklayınca bildirim menüsünün de kapanmasını sağlayan kod
+document.addEventListener('click', function(event) {
+    const notifMenu = document.getElementById('notification-dropdown');
+    const bellBtn = document.getElementById('notification-bell');
+    
+    // Eğer tıklanan yer zil butonu veya menünün içi değilse, menüyü kapat
+    if (notifMenu && notifMenu.style.display === 'block') {
+        if (!notifMenu.contains(event.target) && (!bellBtn || !bellBtn.contains(event.target))) {
+            notifMenu.style.display = 'none';
         }
     }
-
-    // --- SIGNALR GERÇEK ZAMANLI BİLDİRİM SİSTEMİ ---
-
-// 1. Bağlantıyı tanımla (Buradaki URL'yi kendi backend portuna göre güncellemelisin! Örn: https://localhost:7198)
-const API_BASE_URL = "http://localhost:5072"; 
-const connection = new signalR.HubConnectionBuilder()
-    .withUrl(`${API_BASE_URL}/notificationHub`)
-    .build();
-
-// 2. Bağlantıyı başlat
-connection.start()
-    .then(() => console.log("SignalR'a başarıyla bağlanıldı! Canlı bildirimler aktif."))
-    .catch(err => console.error("SignalR Bağlantı Hatası: ", err));
-
-// 3. Backend'den gelen "ReceiveNotification" sinyalini dinle
-connection.on("ReceiveNotification", function (message) {
-    console.log("İŞTE YAKALADIM! Gelen mesaj:", message); // Konsola bunu yazdırıyor mu bakalım?
-    alert("Yeni Bildirim: " + message); // Tarayıcıda doğrudan bir uyarı penceresi açsın
-    
-    // Gelen mesajı arayüzdeki (UI) kırmızı zile ve listeye yansıtacak fonksiyonu çağır
-    showRealTimeNotification(message);
 });
-function showRealTimeNotification(message) {
-    const list = document.getElementById('notification-list');
-    const badge = document.getElementById('notification-count');
+
     
-    if(!list || !badge) return; // Sayfada elementler yoksa hata verme
-
-    // O anki saati al (Örn: 14:30)
-    const now = new Date();
-    const timeString = now.getHours().toString().padStart(2, '0') + ':' + 
-                       now.getMinutes().toString().padStart(2, '0');
-
-    // 1. Yeni bildirimi oluştur
-    const li = document.createElement('li');
-    li.className = 'notification-item unread';
-    li.innerHTML = `
-        <span>${message}</span>
-        <span class="notification-time">${timeString}</span>
-    `;
-
-    // 2. Listede en üste ekle (prepend)
-    list.prepend(li);
-
-    // 3. Kırmızı sayacı güncelle ve görünür yap
-    let currentCount = parseInt(badge.innerText) || 0;
-    currentCount++;
-    badge.innerText = currentCount;
-    badge.style.display = 'block';
-}
+    
+    
 
 
 
 
-}
+
+
+
