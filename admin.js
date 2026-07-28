@@ -463,7 +463,8 @@ document.getElementById('crud-task-form')?.addEventListener('submit', async (e) 
     const token = localStorage.getItem('jwtToken');
     const userId = document.getElementById('task-user-select').value;
     const taskId = document.getElementById('crud-task-id').value;
-    
+    const dueDateInput = document.getElementById('admin-task-duedate');
+const dueDate = dueDateInput && dueDateInput.value ? dueDateInput.value : null;
     const isDone = document.getElementById('crud-task-status').value === "true";
 
     // DİKKAT: C# API'nin reddetmemesi için id ve userId verilerini de pakete ekliyoruz!
@@ -473,9 +474,11 @@ document.getElementById('crud-task-form')?.addEventListener('submit', async (e) 
         title: document.getElementById('crud-task-name').value,
         description: document.getElementById('crud-task-desc').value,
         priority: parseInt(document.getElementById('crud-task-priority').value),
+        dueDate: dueDate,
         isCompleted: isDone,
         status: isDone ? 2 : 0 
     };
+    console.log("API'ye Gönderilen Veri:", taskData);
 
     try {
         let response;
@@ -644,7 +647,7 @@ function sortAdminTasks(columnName) {
         isSortAscending = true;
     }
 
-    // 2. KRİTİK DÜZELTME: Artık safeColumnName (küçük harf) kullanıldığı için eşleşme %100 başarılı olacak
+    
     const columnIndexMap = {
         'title': 0,        
         'description': 1,  
@@ -767,6 +770,8 @@ function renderTaskPaginationButtons(totalPages) {
 
     container.innerHTML = html;
 }
+
+
 
 
 

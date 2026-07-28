@@ -650,3 +650,46 @@ function updateCalendarEvents(tasks) {
         }
     });
 }
+// --- EXCEL'E AKTARMA (SHEETJS) SİSTEMİ ---
+function exportCompletedTasksToExcel() {
+    // 1. Sadece tamamlanmış (status === 2) görevleri filtrele
+    const completedTasks = allTasks.filter(task => normalizeStatus(task.status ?? task.Status) === 2);
+
+    // 2. Eğer tamamlanmış görev yoksa kullanıcıyı uyar ve işlemi iptal et
+    if (completedTasks.length === 0) {
+        if (typeof showToast === "function") {
+            showToast("Dışa aktarılacak tamamlanmış görev bulunamadı.", "error");
+        } else {
+            alert("Dışa aktarılacak tamamlanmış görev bulunamadı.");
+        }
+        return;
+    }
+
+    // 3. Verileri Excel tablosu için temiz ve Türkçe bir formata (JSON) dönüştür
+    const excelData = completedTasks.map(task => {
+        return {
+            "Görev Başlığı": task.title ?? task.Title,
+            "Açıklama": task.description ?? task.Description ?? "Belirtilmemiş",
+            "Öncelik Durumu": getPriorityInfo(normalizePriority(task.priority ?? task.Priority)).text,
+            "Son Tarih": task.dueDate ?? task.DueDate ? (task.dueDate ?? task.DueDate).split('T')[0] : "Tarih Yok"
+        };
+    });
+
+    // 4. Excel çalışma kitabı (Workbook) ve sayfası (Worksheet) oluştur
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Tamamlanan Görevler");
+
+    // 5. Dosyayı indir
+    XLSX.writeFile(workbook, "Tamamlanan_Gorevler.xlsx");
+    
+    if (typeof showToast === "function") showToast("Excel dosyası başarıyla indirildi!", "success");
+}
+
+// Butona tıklama olayını dinleme (DOM yüklendiğinde çalışması için)
+document.addEventListener('DOMContentLoaded', () => {
+    const exportBtn = document.getElementById('export-excel-btn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportCompletedTasksToExcel);
+    }
+});
